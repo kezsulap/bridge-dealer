@@ -118,3 +118,6 @@ range logical_and(range a, range b) {
 range logical_or(range a, range b) {
 	return {!(can_zero(a) && can_zero(b)), can_nonzero(a) || can_nonzero(b)};
 }
+range logical_not(range a) {
+	return {!can_nonzero(a), can_zero(a)};
+}

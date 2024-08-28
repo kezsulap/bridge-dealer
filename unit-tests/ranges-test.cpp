@@ -156,4 +156,13 @@ int main() {
 	ASSERT_EQUAL(range(0, 1), logical_or(range(0, 0), range(INT_MIN, INT_MAX)));
 	ASSERT_EQUAL(range(0, 1), logical_or(range(INT_MIN, INT_MAX), range(0, 0)));
 
+	std::cout << "LOGICAL NOT:" << std::endl;
+	ASSERT_EQUAL(range(1, 1), logical_not(range(0, 0)));
+	ASSERT_EQUAL(range(0, 1), logical_not(range(0, 1)));
+	ASSERT_EQUAL(range(0, 0), logical_not(range(1, 1)));
+	ASSERT_EQUAL(range(0, 0), logical_not(range(-1, -1)));
+	ASSERT_EQUAL(range(0, 1), logical_not(range(-1, 1)));
+	ASSERT_EQUAL(range(0, 1), logical_not(range(INT_MIN, INT_MAX)));
+	ASSERT_EQUAL(range(0, 0), logical_not(range(INT_MIN, -1)));
+	ASSERT_EQUAL(range(0, 0), logical_not(range(1, INT_MAX)));
 }

@@ -24,5 +24,6 @@ range take_min(range a, range b);
 range ternary(range a, range b, range c);
 range logical_and(range a, range b);
 range logical_or(range a, range b);
+range logical_not(range a);
 std::ostream &operator<<(std::ostream &, range);
 #endif
