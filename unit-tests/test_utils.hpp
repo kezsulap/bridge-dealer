@@ -1,11 +1,9 @@
 #ifndef TEST_UTILS_H
 #define TEST_UTILS_H
 #define ASSERT_EQUAL(a, b) assert_equal_impl(a, b, #a, #b)
-#define ASSERT_RANGE_SUBSET(a, b, c) assert_range_subset_impl(a, b, c, #a, #b, #c)
 #define ASSERT_THROWS(e, f) assert_throws_impl<e>([]{f;}, #f, #e)
 #include <iostream>
 #include <string>
-#include "../ranges.hpp"
 inline bool any_failed = false;
 static const std::string GREEN = "\u001b[32m", RED = "\u001b[31m", CLEAR_COLOURS = "\u001b[0m";
 template <class c> void assert_equal_impl(c a, c b, std::string a_name, std::string b_name) {
@@ -17,7 +15,6 @@ template <class c> void assert_equal_impl(c a, c b, std::string a_name, std::str
 		std::cout << GREEN << "PASSED: " << a_name << " = " << b_name << CLEAR_COLOURS << std::endl;
 	}
 }
-void assert_range_subset_impl(range a, range b, range c, std::string a_name, std::string b_name, std::string c_name);
 template <class Exception, class F> void assert_throws_impl(F f, std::string command, std::string exception_name) {
 	try {
 		f();

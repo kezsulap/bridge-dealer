@@ -1,3 +1,4 @@
+#include "parser.hpp"
 #include <bits/stdc++.h>
 using namespace std;
 /*
@@ -67,15 +68,23 @@ struct parse_error {
 	string content;
 };
 */
+const vector <string> two_character_operators = {"<=", ">=", "==", "!=", "&&", "||"};
+bool is_two_character_operator(char a, char b) {
+	for (auto c : two_character_operators) if (c[0] == a && c[1] == b) return true;
+	return false;
+}
+bool is_alnum_or_underscore(char x) {
+	return isalnum(x) || x == '_';
+}
 vector <string> tokenize(const string &s) {
 	vector <string> ans;
 	for (size_t i = 0; i < s.size();) {
 		if (isspace(s[i])) {
 			i++;
 		}
-		else if (isalnum(s[i])) {
+		else if (is_alnum_or_underscore(s[i])) {
 			ans.emplace_back();
-			while (i < s.size() && (isalnum(s[i]) || s[i] == '_')) {
+			while (i < s.size() && is_alnum_or_underscore(s[i])) {
 				ans.back().push_back(s[i]);
 				i++;
 			}
@@ -83,13 +92,17 @@ vector <string> tokenize(const string &s) {
 		else {
 			ans.emplace_back(1, s[i]);
 			i++;
+			if (i < s.size() && is_two_character_operator(ans.back().back(), s[i])) {
+				ans.back().push_back(s[i]);
+				i++;
+			}
 		}
 	}
 	return ans;
 }
-int main() {
-	string x;
-	getline(cin, x);
-	vector <string> out = tokenize(x);
-	for (string c : out) cout << c << "\n";
-}
+// int main() {
+	// string x;
+	// getline(cin, x);
+	// vector <string> out = tokenize(x);
+	// for (string c : out) cout << c << "\n";
+// }

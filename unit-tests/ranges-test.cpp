@@ -1,6 +1,17 @@
 #include "../ranges.hpp"
 #include "test_utils.hpp"
 #include <climits>
+#define ASSERT_RANGE_SUBSET(a, b, c) assert_range_subset_impl(a, b, c, #a, #b, #c)
+#include "../ranges.hpp"
+void assert_range_subset_impl(range a, range b, range c, std::string a_name, std::string b_name, std::string c_name) {
+	if (a.first >= b.first && b.first >= c.first && a.second <= b.second && b.second <= c.second) {
+		std::cout << GREEN << "PASSED: " << a_name << " <= " << b_name << " <= " << c_name << CLEAR_COLOURS << std::endl;
+	}
+	else {
+		std::cout << RED << "ERROR: " << a_name << " = " << a << " <= " << b_name << " = " << b << " <= " << c_name << " = " << c << " not satisfied" << CLEAR_COLOURS << std::endl;
+		any_failed = true;
+	}
+}
 int main() {
 	ASSERT_EQUAL(range(2, 2), singleton(2));
 
