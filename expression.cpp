@@ -31,3 +31,4 @@ bool variable::is_constant() {
 				return false;
 	return true;
 }
+

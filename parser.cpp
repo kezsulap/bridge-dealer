@@ -1,5 +1,6 @@
 #include "parser.hpp"
-#include <bits/stdc++.h>
+#include <bits/stdc++.h> //TODO: replace with what's actually needed
+#include "output_operators.hpp"
 using namespace std;
 /*
 variable make_card(int suit, int rank, int player) {
@@ -64,17 +65,185 @@ variable make_suit_length(const vector <string> &arguments, int suit, const stri
 		res = res + players[i];
 	return res;
 }
+*/
 struct parse_error {
 	string content;
 };
-*/
-const vector <string> two_character_operators = {"<=", ">=", "==", "!=", "&&", "||"};
+
+// ()	Function call
+// + -	Unary plus and minus
+// ! Logical NOT and bitwise NOT
+// * / %	Multiplication, division, and remainder	Left-to-right
+// + -	Addition and subtraction
+// < <=	For relational operators < and ≤ respectively
+// > >=	For relational operators > and ≥ respectively
+// == !=	For relational = and ≠ respectively
+// &&	Logical AND
+// ||	Logical OR
+// ?:	Ternary conditional[note 3]	Right-to-left
+
+//Deliberately not including >>, <<, |, ^, &, ~ bit operations
+
+std::ostream& operator<<(std::ostream &o, const parsed_expression &x) {
+	return o << x.value << x.sub_expressions;
+}
+
+bool is_in(const std::string &x, const std::vector<std::string> content) {
+	for (auto &c : content) if (c == x) return true;
+	return false;
+}
+
+bool is_valid_identifier(const std::string &s) {
+	for (char c : s) if (!isalnum(c) && c != '_') return false;
+	return true;
+}
+
+bool parsed_expression::operator==(const parsed_expression &oth) const {
+	return value == oth.value && sub_expressions == oth.sub_expressions;
+}
+bool parsed_expression::operator!=(const parsed_expression &oth) const {
+	return !(*this == oth);
+}
+
+bool is_operator(const string &x) {
+	return is_in(x, {"*", "/", "%", "+", "-", "==", "<", ">", "<=", ">=", "!=", "&&", "||", "^^", "!"});
+}
+
+parsed_expression parse_tokenized_expression(const std::vector <std::string> &tokens) {
+	assert(!tokens.empty());
+	using iterator = std::vector<std::string>::const_iterator;
+	auto rec_parse_ = [](iterator begin, iterator end, auto rec_parse) -> parsed_expression {
+		// std::cerr << "rec_parse: ";
+		// for (iterator it = begin; it != end; ++it) std::cerr << *it << "   ";
+		// std::cerr << "\n";
+		if (begin == end) throw parse_error{"missing expression"};
+		assert(begin < end);
+		if (end - begin == 1) {
+			if (!is_valid_identifier(*begin)) throw parse_error{"invalid identifier: " + *begin};
+			return parsed_expression{*begin, {}};
+		}
+#define rec_parse(...) rec_parse(__VA_ARGS__, rec_parse)
+		constexpr int NONE_PRIORITY = -1;
+		constexpr int MULTIPLICATION_DIVISION_MODULO_PRIORITY = 0;
+		constexpr int ADDITION_SUBTRACTION_PRIORITY = 1;
+		constexpr int COMPARISON_PRIORITY = 2;
+		constexpr int LOGICAL_AND_PRIORITY = 3;
+		constexpr int LOGICAL_OR_PRIORITY = 4;
+		constexpr int LOGICAL_XOR_PRIORITY = 5;
+		int parenthesis_depth = 0, ternary_operator_depth = 0;
+		iterator ternary_first = end, ternary_second = end;
+		std::vector<iterator> indices;
+		int highest_priority = NONE_PRIORITY;
+		for (auto it = begin; it != end; ++it) {
+			if (*it == "(") parenthesis_depth++;
+			else if (*it == ")") parenthesis_depth--;
+			else if (*it == "?") ternary_operator_depth++;
+			else if (*it == ":") ternary_operator_depth--;
+			if (ternary_operator_depth < 0) throw parse_error{"Mismatched ? and : operators"};
+			if (parenthesis_depth < 0) throw parse_error{"Mismatched parenthesis"};
+			// std::cerr << *it << " at depth = " << parenthesis_depth << ", " << ternary_operator_depth << "\n";
+			if (parenthesis_depth) continue;
+			if (ternary_operator_depth == 1 && *it == "?" && ternary_first == end) ternary_first = it;
+			if (ternary_operator_depth == 0 && *it == ":" && ternary_second == end) ternary_second = it;
+			if (ternary_operator_depth) continue;
+			int this_operator_priority = NONE_PRIORITY;
+			bool this_multi_operator = false;
+			if (is_in(*it, {"*", "/", "%"})) {
+				this_operator_priority = MULTIPLICATION_DIVISION_MODULO_PRIORITY;
+			} else if (is_in(*it, {"+", "-"})) {
+				if (it != begin && !is_operator(*(it - 1))) {
+					this_operator_priority = ADDITION_SUBTRACTION_PRIORITY;
+				}
+			} else if (is_in(*it, {"==", "<", ">", "<=", ">=", "!="})) {
+				this_operator_priority = COMPARISON_PRIORITY;
+				this_multi_operator = true;
+			} else if (*it == "&&") {
+				this_operator_priority = LOGICAL_AND_PRIORITY;
+			} else if (*it == "||") {
+				this_operator_priority = LOGICAL_OR_PRIORITY;
+			} else if (*it == "^^") {
+				this_operator_priority = LOGICAL_XOR_PRIORITY;
+			}
+			// std::cerr << "*it = " << *it << ", " << this_operator_priority << "\n";
+			if (this_operator_priority != NONE_PRIORITY) {
+				if (this_operator_priority > highest_priority) {
+					highest_priority = this_operator_priority;
+					indices = {it};
+				}
+				else if (this_operator_priority == highest_priority && this_multi_operator) {
+					indices.push_back(it);
+				}
+			}
+		}
+		if (ternary_first != end) {
+			assert(ternary_second != end);
+			return parsed_expression{"?:", {
+					rec_parse(begin, ternary_first),
+					rec_parse(ternary_first + 1, ternary_second),
+					rec_parse(ternary_second + 1, end)
+				}
+			};
+		}
+		// std::cerr << "highest_priority = " << highest_priority << "\n";
+		if (ternary_operator_depth != 0) throw parse_error{"Mismatched ? and : operators"};
+		if (parenthesis_depth != 0) throw parse_error{"Mismatched parenthesis"};
+		if (highest_priority != NONE_PRIORITY) {
+			// std::cerr << "found operator " << *indices[0] << "\n";
+			assert(!indices.empty());
+			if (indices.size() == 1u)
+				return {*indices[0], {rec_parse(begin, indices[0]), rec_parse(indices[0] + 1, end)}};
+			std::vector<parsed_expression> sub_expressions;
+			sub_expressions.push_back(rec_parse(begin, indices[0]));
+			for (size_t i = 0; i < indices.size(); ++i) {
+				sub_expressions.push_back(parsed_expression{*indices[i], {}});
+				sub_expressions.push_back(rec_parse(indices[i] + 1, i + 1 == indices.size() ? end : indices[i + 1]));
+			}
+			return {"", sub_expressions};
+		}
+		if (*begin == "(" && *(end - 1) == ")") { //TODO: Some cleaner error message on (x)(y) or anything alike
+			return rec_parse(begin + 1, end - 1);
+		}
+		if (is_valid_identifier(*begin) && *(begin + 1) == "(" && *(end - 1) == ")") {
+			vector <iterator> commas;
+			int depth = 0;
+			for (auto it = begin; it != end; ++it) {
+				if (*it == "(") depth++;
+				if (*it == ")") depth--;
+				if (*it == "," && depth == 1) {
+					commas.push_back(it);
+				}
+			}
+			assert(depth == 0);
+			vector <parsed_expression> subexpressions;
+			if (commas.empty()) subexpressions.push_back(rec_parse(begin + 2, end - 1));
+			else {
+				subexpressions.push_back(rec_parse(begin + 2, commas[0]));
+				for (size_t i = 0; i < commas.size() - 1; ++i)
+					subexpressions.push_back(rec_parse(commas[i] + 1, commas[i + 1]));
+				subexpressions.push_back(rec_parse(commas.back() + 1, end - 1));
+			}
+			return parsed_expression{*begin, subexpressions};
+		}
+		if (is_in(*begin, {"+", "-", "!"})) {
+			return parsed_expression{*begin, {rec_parse(begin + 1, end)}};
+		}
+		throw parse_error{"Can't parse expression"};
+#undef rec_parse
+	};
+	return rec_parse_(tokens.begin(), tokens.end(), rec_parse_);
+}
+parsed_expression parse_expression(const std::string &expression) {
+	return parse_tokenized_expression(tokenize(expression));
+}
+
+
+const vector <string> two_character_operators = {"<=", ">=", "==", "!=", "&&", "||", "^^"};
 bool is_two_character_operator(char a, char b) {
 	for (auto c : two_character_operators) if (c[0] == a && c[1] == b) return true;
 	return false;
 }
-bool is_alnum_or_underscore(char x) {
-	return isalnum(x) || x == '_';
+bool is_multicharacter_token_part(char x) {
+	return isalnum(x) || x == '_' || x == '[' || x == ']'; //Usage of [] in shapes like [53][41] or 3]5[32
 }
 vector <string> tokenize(const string &s) {
 	vector <string> ans;
@@ -82,9 +251,9 @@ vector <string> tokenize(const string &s) {
 		if (isspace(s[i])) {
 			i++;
 		}
-		else if (is_alnum_or_underscore(s[i])) {
+		else if (is_multicharacter_token_part(s[i])) {
 			ans.emplace_back();
-			while (i < s.size() && is_alnum_or_underscore(s[i])) {
+			while (i < s.size() && is_multicharacter_token_part(s[i])) {
 				ans.back().push_back(s[i]);
 				i++;
 			}

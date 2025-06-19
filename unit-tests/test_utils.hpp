@@ -4,6 +4,7 @@
 #define ASSERT_THROWS(e, f) assert_throws_impl<e>([]{f;}, #f, #e)
 #include <iostream>
 #include <string>
+#include "../output_operators.hpp"
 inline bool any_failed = false;
 static const std::string GREEN = "\u001b[32m", RED = "\u001b[31m", CLEAR_COLOURS = "\u001b[0m";
 template <class c> void assert_equal_impl(c a, c b, std::string a_name, std::string b_name) {
