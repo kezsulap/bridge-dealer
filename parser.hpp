@@ -13,4 +13,7 @@ struct parsed_expression {
 std::ostream& operator<<(std::ostream &o, const parsed_expression &x);
 parsed_expression parse_tokenized_expression(const std::vector <std::string> &tokens);
 parsed_expression parse_expression(const std::string &);
+struct parse_error {
+	std::string content;
+};
 #endif

@@ -66,9 +66,6 @@ variable make_suit_length(const vector <string> &arguments, int suit, const stri
 	return res;
 }
 */
-struct parse_error {
-	string content;
-};
 
 // ()	Function call
 // + -	Unary plus and minus

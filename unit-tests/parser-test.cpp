@@ -329,4 +329,5 @@ int main() {
 					}},
 				}
 			}));
+	ASSERT_THROWS_WITH_CONTENT(parse_error, parse_expression("(("), content, "Mismatched parenthesis");
 }
