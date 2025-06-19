@@ -330,4 +330,13 @@ int main() {
 				}
 			}));
 	ASSERT_THROWS_WITH_CONTENT(parse_error, parse_expression("(("), content, "Mismatched parenthesis");
+	ASSERT_THROWS_WITH_CONTENT(parse_error, parse_expression("("), content, "Mismatched parenthesis");
+	ASSERT_THROWS_WITH_CONTENT(parse_error, parse_expression(")"), content, "Mismatched parenthesis");
+	ASSERT_THROWS_WITH_CONTENT(parse_error, parse_expression(")("), content, "Mismatched parenthesis");
+	ASSERT_THROWS_WITH_CONTENT(parse_error, parse_expression("@"), content, "Invalid identifier: @");
+	ASSERT_THROWS_WITH_CONTENT(parse_error, parse_expression("(1 ? 2) : 3"), content, "Expecting : before )");
+	ASSERT_THROWS_WITH_CONTENT(parse_error, parse_expression("1 ? 2"), content, "Ternary operator ?: missing the : part");
+	ASSERT_THROWS_WITH_CONTENT(parse_error, parse_expression("1 : 2"), content, ": without prior ?");
+	ASSERT_THROWS_WITH_CONTENT(parse_error, parse_expression("1 ? (2 : 3)"), content, ": without prior ?");
+	ASSERT_THROWS_WITH_CONTENT(parse_error, parse_expression("()"), content, "Missing expression");
 }

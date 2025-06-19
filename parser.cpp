@@ -113,12 +113,8 @@ parsed_expression parse_tokenized_expression(const std::vector <std::string> &to
 		// std::cerr << "rec_parse: ";
 		// for (iterator it = begin; it != end; ++it) std::cerr << *it << "   ";
 		// std::cerr << "\n";
-		if (begin == end) throw parse_error{"missing expression"};
+		if (begin == end) throw parse_error{"Missing expression"};
 		assert(begin < end);
-		if (end - begin == 1) {
-			if (!is_valid_identifier(*begin)) throw parse_error{"invalid identifier: " + *begin};
-			return parsed_expression{*begin, {}};
-		}
 #define rec_parse(...) rec_parse(__VA_ARGS__, rec_parse)
 		constexpr int NONE_PRIORITY = -1;
 		constexpr int MULTIPLICATION_DIVISION_MODULO_PRIORITY = 0;
@@ -128,16 +124,30 @@ parsed_expression parse_tokenized_expression(const std::vector <std::string> &to
 		constexpr int LOGICAL_OR_PRIORITY = 4;
 		constexpr int LOGICAL_XOR_PRIORITY = 5;
 		int parenthesis_depth = 0, ternary_operator_depth = 0;
+		std::stack<std::string> parenthesis_and_ternary_stack;
 		iterator ternary_first = end, ternary_second = end;
 		std::vector<iterator> indices;
 		int highest_priority = NONE_PRIORITY;
 		for (auto it = begin; it != end; ++it) {
-			if (*it == "(") parenthesis_depth++;
-			else if (*it == ")") parenthesis_depth--;
-			else if (*it == "?") ternary_operator_depth++;
-			else if (*it == ":") ternary_operator_depth--;
-			if (ternary_operator_depth < 0) throw parse_error{"Mismatched ? and : operators"};
-			if (parenthesis_depth < 0) throw parse_error{"Mismatched parenthesis"};
+			if (*it == "(") {
+				parenthesis_and_ternary_stack.push("(");
+				parenthesis_depth++;
+			}
+			else if (*it == ")") {
+				if (parenthesis_and_ternary_stack.empty()) throw parse_error{"Mismatched parenthesis"};
+				if (parenthesis_and_ternary_stack.top() == "?") throw parse_error{"Expecting : before )"};
+				parenthesis_and_ternary_stack.pop();
+				parenthesis_depth--;
+			}
+			else if (*it == "?") {
+				parenthesis_and_ternary_stack.push("?");
+				ternary_operator_depth++;
+			}
+			else if (*it == ":") {
+				if (parenthesis_and_ternary_stack.empty() || parenthesis_and_ternary_stack.top() == "(") throw parse_error{": without prior ?"};
+				parenthesis_and_ternary_stack.pop();
+				ternary_operator_depth--;
+			}
 			// std::cerr << *it << " at depth = " << parenthesis_depth << ", " << ternary_operator_depth << "\n";
 			if (parenthesis_depth) continue;
 			if (ternary_operator_depth == 1 && *it == "?" && ternary_first == end) ternary_first = it;
@@ -172,6 +182,9 @@ parsed_expression parse_tokenized_expression(const std::vector <std::string> &to
 				}
 			}
 		}
+		if (parenthesis_depth) throw parse_error{"Mismatched parenthesis"};
+		if (ternary_operator_depth) throw parse_error{"Ternary operator ?: missing the : part"};
+		// std::cerr << "ternary_first = " << (ternary_first == end ? "---" : *ternary_first) << ", ternary_second = " << (ternary_second == end ? "---" : *ternary_second) << std::endl; 
 		if (ternary_first != end) {
 			assert(ternary_second != end);
 			return parsed_expression{"?:", {
@@ -196,6 +209,10 @@ parsed_expression parse_tokenized_expression(const std::vector <std::string> &to
 				sub_expressions.push_back(rec_parse(indices[i] + 1, i + 1 == indices.size() ? end : indices[i + 1]));
 			}
 			return {"", sub_expressions};
+		}
+		if (end - begin == 1) {
+			if (!is_valid_identifier(*begin)) throw parse_error{"Invalid identifier: " + *begin};
+			return parsed_expression{*begin, {}};
 		}
 		if (*begin == "(" && *(end - 1) == ")") { //TODO: Some cleaner error message on (x)(y) or anything alike
 			return rec_parse(begin + 1, end - 1);
