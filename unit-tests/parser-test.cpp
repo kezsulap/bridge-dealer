@@ -339,4 +339,10 @@ int main() {
 	ASSERT_THROWS_WITH_CONTENT(parse_error, parse_expression("1 : 2"), content, ": without prior ?");
 	ASSERT_THROWS_WITH_CONTENT(parse_error, parse_expression("1 ? (2 : 3)"), content, ": without prior ?");
 	ASSERT_THROWS_WITH_CONTENT(parse_error, parse_expression("()"), content, "Missing expression");
+	ASSERT_THROWS_WITH_CONTENT(parse_error, parse_expression("$"), content, "Invalid identifier: $");
+	//TODO: make below error messages more clear
+	ASSERT_THROWS_WITH_CONTENT(parse_error, parse_expression("1 $ 2"), content, "Can't parse expression");
+	ASSERT_THROWS_WITH_CONTENT(parse_error, parse_expression("1 2"), content, "Can't parse expression");
+	ASSERT_THROWS_WITH_CONTENT(parse_error, parse_expression("any 5332"), content, "Can't parse expression");
+	ASSERT_THROWS_WITH_CONTENT(parse_error, parse_expression("**"), content, "Missing expression");
 }
