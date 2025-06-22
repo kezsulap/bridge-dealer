@@ -1,7 +1,9 @@
 #include "parser.hpp"
-#include <bits/stdc++.h> //TODO: replace with what's actually needed
 #include "output_operators.hpp"
-using namespace std;
+#include <cassert>
+#include <stack>
+#include <string>
+#include <vector>
 /*
 variable make_card(int suit, int rank, int player) {
 	variable res;
@@ -27,7 +29,7 @@ variable make_hcp(int player, int suit = -1) {
 variable make_rank(int rank, int player) {
 	
 }
-string join(const string &separator, const vector <string> &rest) {
+string join(const string &separator, const std::vector <string> &rest) {
 	stringstream out;
 	for (size_t i = 0; i < rest.size(); ++i) {
 		if (i) out << separator;
@@ -42,7 +44,7 @@ variable make_constant(value x) {
 	res.offset = x;
 	return res;
 };
-variable suit_length(const vector <string> &arguments, int suit) {
+variable suit_length(const std::vector <string> &arguments, int suit) {
 	
 }
 array<value, PLAYERS> parse_players(const string &arguments) {
@@ -55,7 +57,7 @@ array<value, PLAYERS> parse_players(const string &arguments) {
 	}
 	return res;
 }
-variable make_suit_length(const vector <string> &arguments, int suit, const string &name) {
+variable make_suit_length(const std::vector <string> &arguments, int suit, const string &name) {
 	if (arguments.size() != 1u) {
 		throw parse_error {name + " requires one argument rather than \"" + join(", ", arguments) + "\""};
 	}
@@ -102,7 +104,7 @@ bool parsed_expression::operator!=(const parsed_expression &oth) const {
 	return !(*this == oth);
 }
 
-bool is_operator(const string &x) {
+bool is_operator(const std::string &x) {
 	return is_in(x, {"*", "/", "%", "+", "-", "==", "<", ">", "<=", ">=", "!=", "&&", "||", "^^", "!"});
 }
 
@@ -218,7 +220,7 @@ parsed_expression parse_tokenized_expression(const std::vector <std::string> &to
 			return rec_parse(begin + 1, end - 1);
 		}
 		if (is_valid_identifier(*begin) && *(begin + 1) == "(" && *(end - 1) == ")") {
-			vector <iterator> commas;
+			std::vector <iterator> commas;
 			int depth = 0;
 			for (auto it = begin; it != end; ++it) {
 				if (*it == "(") depth++;
@@ -228,7 +230,7 @@ parsed_expression parse_tokenized_expression(const std::vector <std::string> &to
 				}
 			}
 			assert(depth == 0);
-			vector <parsed_expression> subexpressions;
+			std::vector <parsed_expression> subexpressions;
 			if (commas.empty()) subexpressions.push_back(rec_parse(begin + 2, end - 1));
 			else {
 				subexpressions.push_back(rec_parse(begin + 2, commas[0]));
@@ -251,7 +253,7 @@ parsed_expression parse_expression(const std::string &expression) {
 }
 
 
-const vector <string> two_character_operators = {"<=", ">=", "==", "!=", "&&", "||", "^^"};
+const std::vector <std::string> two_character_operators = {"<=", ">=", "==", "!=", "&&", "||", "^^"};
 bool is_two_character_operator(char a, char b) {
 	for (auto c : two_character_operators) if (c[0] == a && c[1] == b) return true;
 	return false;
@@ -259,8 +261,8 @@ bool is_two_character_operator(char a, char b) {
 bool is_multicharacter_token_part(char x) {
 	return isalnum(x) || x == '_' || x == '[' || x == ']'; //Usage of [] in shapes like [53][41] or 3]5[32
 }
-vector <string> tokenize(const string &s) {
-	vector <string> ans;
+std::vector <std::string> tokenize(const std::string &s) {
+	std::vector <std::string> ans;
 	for (size_t i = 0; i < s.size();) {
 		if (isspace(s[i])) {
 			i++;
@@ -283,9 +285,3 @@ vector <string> tokenize(const string &s) {
 	}
 	return ans;
 }
-// int main() {
-	// string x;
-	// getline(cin, x);
-	// vector <string> out = tokenize(x);
-	// for (string c : out) cout << c << "\n";
-// }
