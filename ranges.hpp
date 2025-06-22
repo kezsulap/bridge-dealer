@@ -13,6 +13,12 @@ range operator/(range a, range b);
 range operator%(range a, range b);
 range take_max(range a, range b);
 range take_min(range a, range b);
+range less_than(range a, range b);
+range less_equal(range a, range b);
+range greater_than(range a, range b);
+range greater_equal(range a, range b);
+range equal(range a, range b);
+range not_equal(range a, range b);
 //0 based
 range take_kth(const std::vector<range> &ranges, size_t k);
 /* TODO: does anyone outside need these functions?

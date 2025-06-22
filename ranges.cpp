@@ -96,6 +96,24 @@ range is_zero(range a) {
 range is_nonzero(range a) {
 	return {!can_zero(a), can_nonzero(a)};
 }
+range less_than(range a, range b) {
+	return {a.second < b.first, a.first < b.second};
+}
+range less_equal(range a, range b) {
+	return {a.second <= b.first, a.first <= b.second};
+}
+range greater_than(range a, range b) {
+	return less_than(b, a);
+}
+range greater_equal(range a, range b) {
+	return less_equal(b, a);
+}
+range equal(range a, range b) {
+	return {a.first == a.second && a.first == b.first && a.first == b.second, a.first <= b.second && b.first <= a.second};
+}
+range not_equal(range a, range b) {
+	return {a.first > b.second || b.first > a.second, a.first != a.second || a.first != b.first || a.first != b.second};	
+}
 range is_positive(range a) {
 	if (a.first > 0) return {1, 1};
 	if (a.second <= 0) return {0, 0};

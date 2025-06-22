@@ -97,6 +97,68 @@ int main() {
 	ASSERT_EQUAL(range(10, 30), take_min(range(10, 40), range(20, 30)));
 	ASSERT_EQUAL(range(INT_MIN, INT_MAX), take_min(range(INT_MIN, INT_MAX), range(INT_MIN, INT_MAX)));
 
+	std::cout << "LESS THAN:" << std::endl;
+	ASSERT_EQUAL(range(0, 1), less_than(range(0, 1), range(0, 1)));
+	ASSERT_EQUAL(range(0, 1), less_than(range(0, 3), range(1, 2)));
+	ASSERT_EQUAL(range(0, 1), less_than(range(1, 2), range(0, 3)));
+	ASSERT_EQUAL(range(0, 1), less_than(range(0, 2), range(1, 3)));
+	ASSERT_EQUAL(range(0, 1), less_than(range(1, 3), range(0, 2)));
+	ASSERT_EQUAL(range(0, 1), less_than(range(0, 1), range(1, 2)));
+	ASSERT_EQUAL(range(0, 0), less_than(range(1, 2), range(0, 1)));
+	ASSERT_EQUAL(range(0, 0), less_than(range(0, 0), range(0, 0)));
+	ASSERT_EQUAL(range(0, 0), less_than(range(1, 1), range(0, 0)));
+	ASSERT_EQUAL(range(1, 1), less_than(range(0, 0), range(1, 1)));
+
+	std::cout << "LESS OR EQUAL:" << std::endl;
+	ASSERT_EQUAL(range(0, 1), less_equal(range(0, 1), range(0, 1)));
+	ASSERT_EQUAL(range(0, 1), less_equal(range(0, 3), range(1, 2)));
+	ASSERT_EQUAL(range(0, 1), less_equal(range(1, 2), range(0, 3)));
+	ASSERT_EQUAL(range(0, 1), less_equal(range(0, 2), range(1, 3)));
+	ASSERT_EQUAL(range(0, 1), less_equal(range(1, 3), range(0, 2)));
+	ASSERT_EQUAL(range(1, 1), less_equal(range(0, 1), range(1, 2)));
+	ASSERT_EQUAL(range(0, 1), less_equal(range(1, 2), range(0, 1)));
+	ASSERT_EQUAL(range(1, 1), less_equal(range(0, 0), range(0, 0)));
+	ASSERT_EQUAL(range(0, 0), less_equal(range(1, 1), range(0, 0)));
+	ASSERT_EQUAL(range(1, 1), less_equal(range(0, 0), range(1, 1)));
+
+	std::cout << "GREATER THAN:" << std::endl;
+	ASSERT_EQUAL(range(0, 1), greater_than(range(0, 1), range(0, 1)));
+	ASSERT_EQUAL(range(0, 1), greater_than(range(1, 2), range(0, 3)));
+	ASSERT_EQUAL(range(0, 1), greater_than(range(0, 3), range(1, 2)));
+	ASSERT_EQUAL(range(0, 1), greater_than(range(1, 3), range(0, 2)));
+	ASSERT_EQUAL(range(0, 1), greater_than(range(0, 2), range(1, 3)));
+	ASSERT_EQUAL(range(0, 1), greater_than(range(1, 2), range(0, 1)));
+	ASSERT_EQUAL(range(0, 0), greater_than(range(0, 1), range(1, 2)));
+	ASSERT_EQUAL(range(0, 0), greater_than(range(0, 0), range(0, 0)));
+	ASSERT_EQUAL(range(0, 0), greater_than(range(0, 0), range(1, 1)));
+	ASSERT_EQUAL(range(1, 1), greater_than(range(1, 1), range(0, 0)));
+
+	std::cout << "GREATER OR EQUAL:" << std::endl;
+	ASSERT_EQUAL(range(0, 1), greater_equal(range(0, 1), range(0, 1)));
+	ASSERT_EQUAL(range(0, 1), greater_equal(range(1, 2), range(0, 3)));
+	ASSERT_EQUAL(range(0, 1), greater_equal(range(0, 3), range(1, 2)));
+	ASSERT_EQUAL(range(0, 1), greater_equal(range(1, 3), range(0, 2)));
+	ASSERT_EQUAL(range(0, 1), greater_equal(range(0, 2), range(1, 3)));
+	ASSERT_EQUAL(range(1, 1), greater_equal(range(1, 2), range(0, 1)));
+	ASSERT_EQUAL(range(0, 1), greater_equal(range(0, 1), range(1, 2)));
+	ASSERT_EQUAL(range(1, 1), greater_equal(range(0, 0), range(0, 0)));
+	ASSERT_EQUAL(range(0, 0), greater_equal(range(0, 0), range(1, 1)));
+	ASSERT_EQUAL(range(1, 1), greater_equal(range(1, 1), range(0, 0)));
+
+	std::cout << "EQUAL:" << std::endl;
+	ASSERT_EQUAL(range(0, 0), equal(range(0, 0), range(1, 1)));
+	ASSERT_EQUAL(range(0, 1), equal(range(0, 1), range(0, 1)));
+	ASSERT_EQUAL(range(0, 1), equal(range(0, 1), range(1, 2)));
+	ASSERT_EQUAL(range(0, 1), equal(range(1, 2), range(0, 1)));
+	ASSERT_EQUAL(range(1, 1), equal(range(1, 1), range(1, 1)));
+
+	std::cout << "NOT EQUAL:" << std::endl;
+	ASSERT_EQUAL(range(1, 1), not_equal(range(0, 0), range(1, 1)));
+	ASSERT_EQUAL(range(0, 1), not_equal(range(0, 1), range(0, 1)));
+	ASSERT_EQUAL(range(0, 1), not_equal(range(0, 1), range(1, 2)));
+	ASSERT_EQUAL(range(0, 1), not_equal(range(1, 2), range(0, 1)));
+	ASSERT_EQUAL(range(0, 0), not_equal(range(1, 1), range(1, 1)));
+
 	std::cout << "TERNARY" << std::endl;
 	ASSERT_EQUAL(range(20, 21), ternary(range(0, 0), range(30, 31), range(20, 21)));
 	ASSERT_EQUAL(range(25, 26), ternary(range(0, 0), range(20, 31), range(25, 26)));
