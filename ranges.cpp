@@ -121,3 +121,15 @@ range logical_or(range a, range b) {
 range logical_not(range a) {
 	return {!can_nonzero(a), can_zero(a)};
 }
+range take_kth(const std::vector<range> &ranges, size_t k) {
+	assert(k < ranges.size());
+	std::vector<value> begins(ranges.size()), ends(ranges.size());
+	for (size_t i = 0; i < ranges.size(); ++i) {
+		auto [b, e] = ranges[i];
+		begins[i] = b;
+		ends[i] = e;
+	}
+	std::nth_element(begins.begin(), begins.begin() + k, begins.end());
+	std::nth_element(ends.begin(), ends.begin() + k, ends.end());
+	return {begins[k], ends[k]};
+}

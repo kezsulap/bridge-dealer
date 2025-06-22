@@ -165,4 +165,12 @@ int main() {
 	ASSERT_EQUAL(range(0, 1), logical_not(range(INT_MIN, INT_MAX)));
 	ASSERT_EQUAL(range(0, 0), logical_not(range(INT_MIN, -1)));
 	ASSERT_EQUAL(range(0, 0), logical_not(range(1, INT_MAX)));
+
+	std::cout << "TAKE KTH:" << std::endl;
+	ASSERT_EQUAL(range(0, 0), take_kth({range(0, 0)}, 0));
+	ASSERT_EQUAL(range(10, 20), take_kth({range(10, 20)}, 0));
+	ASSERT_EQUAL(range(10, 20), take_kth({range(10, 20)}, 0));
+	ASSERT_EQUAL(range(10, 13), take_kth({range(10, 20), range(11, 14), range(12, 13)}, 0));
+	ASSERT_EQUAL(range(11, 14), take_kth({range(10, 20), range(11, 14), range(12, 13)}, 1));
+	ASSERT_EQUAL(range(12, 20), take_kth({range(10, 20), range(11, 14), range(12, 13)}, 2));
 }
