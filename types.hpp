@@ -1,8 +1,5 @@
 #ifndef TYPES_H
 #define TYPES_H
-#include <vector>
-#include <array>
-#include <cstdint>
 #include <string>
 #include <cassert>
 const int PLAYERS = 4, SUITS = 4, RANKS = 13, DECK_SIZE = SUITS * RANKS;
@@ -28,6 +25,4 @@ inline int make_card(int rank, int suit) {
 	return rank * SUITS + suit;
 }
 using value = int;
-using partition_t = std::array<uint8_t, DECK_SIZE>;//TODO: Rename to something like deck partition
-using board_t = std::vector <std::array <uint8_t, 4>>; //Is it partitioned board? Rename to something more clear
 #endif

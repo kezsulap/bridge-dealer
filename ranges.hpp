@@ -2,6 +2,7 @@
 #define RANGES_H
 #include "types.hpp"
 #include <iostream>
+#include <vector>
 struct division_by_zero {};
 using range = std::pair <value, value>;
 range singleton(value x);
