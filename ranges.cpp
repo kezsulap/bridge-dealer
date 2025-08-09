@@ -151,3 +151,30 @@ range take_kth(const std::vector<range> &ranges, size_t k) {
 	std::nth_element(ends.begin(), ends.begin() + k, ends.end());
 	return {begins[k], ends[k]};
 }
+std::tuple<std::optional<value>, std::optional<value>> replace_irrelevant_min(range a, range b) {
+	if (a.second <= b.first) {
+		return {std::nullopt, std::numeric_limits<value>::max()};
+	}
+	if (b.second <= a.first) {
+		return {std::numeric_limits<value>::max(), std::nullopt};
+	}
+	return {std::nullopt, std::nullopt};
+}
+std::tuple<std::optional<value>, std::optional<value>> replace_irrelevant_max(range a, range b) {
+	if (a.second <= b.first) {
+		return {std::numeric_limits<value>::min(), std::nullopt};
+	}
+	if (b.second <= a.first) {
+		return {std::nullopt, std::numeric_limits<value>::min()};
+	}
+	return {std::nullopt, std::nullopt};
+}
+std::tuple<std::optional<value>, std::optional<value>, std::optional<value> > replace_irrelevant_ternary(range a, range, range) {
+	if (!can_zero(a)) {
+		return {std::nullopt, std::nullopt, 0};
+	}
+	if (!can_nonzero(a)) {
+		return {std::nullopt, 0, std::nullopt};
+	}
+	return {std::nullopt, std::nullopt, std::nullopt};
+}

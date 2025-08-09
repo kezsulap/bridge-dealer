@@ -235,4 +235,31 @@ int main() {
 	ASSERT_EQUAL(range(10, 13), take_kth({range(10, 20), range(11, 14), range(12, 13)}, 0));
 	ASSERT_EQUAL(range(11, 14), take_kth({range(10, 20), range(11, 14), range(12, 13)}, 1));
 	ASSERT_EQUAL(range(12, 20), take_kth({range(10, 20), range(11, 14), range(12, 13)}, 2));
+
+	std::cout << "REPLACE IRRELEVANT MIN:" << std::endl;
+	ASSERT_EQUAL(make_tuple(std::optional<int>(), std::optional<int>()), replace_irrelevant_min(range(0, 2), range(0, 2)));
+	ASSERT_EQUAL(make_tuple(std::optional<int>(), std::optional<int>(INT_MAX)), replace_irrelevant_min(range(0, 2), range(2, 2)));
+	ASSERT_EQUAL(make_tuple(std::optional<int>(INT_MAX), std::optional<int>()), replace_irrelevant_min(range(2, 2), range(0, 2)));
+	ASSERT_EQUAL(make_tuple(std::optional<int>(), std::optional<int>(INT_MAX)), replace_irrelevant_min(range(0, 2), range(10, 15)));
+	ASSERT_EQUAL(make_tuple(std::optional<int>(INT_MAX), std::optional<int>()), replace_irrelevant_min(range(10, 15), range(0, 2)));
+	ASSERT_EQUAL(make_tuple(std::optional<int>(), std::optional<int>()), replace_irrelevant_min(range(0, 2), range(1, 3)));
+	ASSERT_EQUAL(make_tuple(std::optional<int>(), std::optional<int>()), replace_irrelevant_min(range(1, 3), range(0, 2)));
+	ASSERT_EQUAL(make_tuple(std::optional<int>(), std::optional<int>()), replace_irrelevant_min(range(0, 3), range(1, 2)));
+	ASSERT_EQUAL(make_tuple(std::optional<int>(), std::optional<int>()), replace_irrelevant_min(range(1, 2), range(0, 3)));
+
+	std::cout << "REPLACE IRRELEVANT MAX:" << std::endl;
+	ASSERT_EQUAL(make_tuple(std::optional<int>(), std::optional<int>()), replace_irrelevant_max(range(0, 2), range(0, 2)));
+	ASSERT_EQUAL(make_tuple(std::optional<int>(), std::optional<int>(INT_MIN)), replace_irrelevant_max(range(0, 2), range(0, 0)));
+	ASSERT_EQUAL(make_tuple(std::optional<int>(INT_MIN), std::optional<int>()), replace_irrelevant_max(range(0, 0), range(0, 2)));
+	ASSERT_EQUAL(make_tuple(std::optional<int>(INT_MIN), std::optional<int>()), replace_irrelevant_max(range(0, 2), range(10, 15)));
+	ASSERT_EQUAL(make_tuple(std::optional<int>(), std::optional<int>(INT_MIN)), replace_irrelevant_max(range(10, 15), range(0, 2)));
+	ASSERT_EQUAL(make_tuple(std::optional<int>(), std::optional<int>()), replace_irrelevant_max(range(0, 2), range(1, 3)));
+	ASSERT_EQUAL(make_tuple(std::optional<int>(), std::optional<int>()), replace_irrelevant_max(range(1, 3), range(0, 2)));
+	ASSERT_EQUAL(make_tuple(std::optional<int>(), std::optional<int>()), replace_irrelevant_max(range(0, 3), range(1, 2)));
+	ASSERT_EQUAL(make_tuple(std::optional<int>(), std::optional<int>()), replace_irrelevant_max(range(1, 2), range(0, 3)));
+
+	std::cout << "REPLACE IRRELEVANT TERNARY:" << std::endl;
+	ASSERT_EQUAL(make_tuple(std::optional<int>(), std::optional<int>(), std::optional<int>()), replace_irrelevant_ternary(range(0, 1), range(0, 8), range(0, 3)));
+	ASSERT_EQUAL(make_tuple(std::optional<int>(), std::optional<int>(0), std::optional<int>()), replace_irrelevant_ternary(range(0, 0), range(0, 8), range(0, 3)));
+	ASSERT_EQUAL(make_tuple(std::optional<int>(), std::optional<int>(), std::optional<int>(0)), replace_irrelevant_ternary(range(1, 1), range(0, 8), range(0, 3)));
 }

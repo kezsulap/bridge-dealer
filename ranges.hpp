@@ -3,6 +3,7 @@
 #include "types.hpp"
 #include <iostream>
 #include <vector>
+#include <optional>
 struct division_by_zero {};
 using range = std::pair <value, value>;
 range singleton(value x);
@@ -35,4 +36,8 @@ range logical_and(range a, range b);
 range logical_or(range a, range b);
 range logical_not(range a);
 std::ostream &operator<<(std::ostream &, range);
+
+std::tuple<std::optional<value>, std::optional<value>> replace_irrelevant_min(range a, range b);
+std::tuple<std::optional<value>, std::optional<value>> replace_irrelevant_max(range a, range b);
+std::tuple<std::optional<value>, std::optional<value>, std::optional<value> > replace_irrelevant_ternary(range a, range b, range c);
 #endif
