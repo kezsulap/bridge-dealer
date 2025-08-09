@@ -93,7 +93,7 @@ bool can_nonzero(range a) {
 range is_zero(range a) {
 	return {!can_nonzero(a), can_zero(a)};
 }
-range is_nonzero(range a) {
+range is_nonzero(range a) { // Cast to bool (?)
 	return {!can_zero(a), can_nonzero(a)};
 }
 range less_than(range a, range b) {
@@ -124,7 +124,7 @@ range is_nonnegative(range a) {
 	if (a.second < 0) return {0, 0};
 	return {0, 1};
 }
-range ternary(range a, range b, range c) {
+range ternary(range a, range b, range c) { //TODO: make it so a is required to be a boolean and use cast to bool (if needed) when compiling an expression
 	range first = is_nonzero(a);
 	if (first == range{1, 1}) return b;
 	if (first == range{0, 0}) return c;
