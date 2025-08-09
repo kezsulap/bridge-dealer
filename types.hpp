@@ -11,11 +11,13 @@ const std::string SUITS_STR[SUITS] = {"SPADES", "HEARTS", "DIAMONDS", "CLUBS"};
 const std::string SUITS_SYMBOLS[SUITS] = {"♠", "♥", "♦", "♣"};
 const int ACE = 12, KING = 11, QUEEN = 10, JACK = 9, TEN = 8;
 const char RANK_SYMBOLS[RANKS] = {'2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'};
-inline int get_suit(int card) {
+const std::string suit_color_codes[SUITS] = {"\033[38:2:0:130:255m", "\033[38:2:255:0:0m", "\033[38:2:255:165:0m", "\033[38:2:0:255:0m"};
+const std::string reset_colors = "\033[0m";
+inline int get_rank(int card) {
 	assert(card >= 0 && card < DECK_SIZE);
 	return card / SUITS;
 }
-inline int get_rank(int card) {
+inline int get_suit(int card) {
 	assert(card >= 0 && card < DECK_SIZE);
 	return card % SUITS;
 }
