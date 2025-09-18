@@ -142,10 +142,51 @@ card_player_matrix full_product(const player_weights& players, const suit_weight
 	}
 	return ret;
 }
-processed_input_variable process_input_variable(const card_player_matrix&, const std::bitset<DECK_SIZE> &subset) {
+processed_input_variable process_input_variable(const card_player_matrix& matrix, const std::bitset<DECK_SIZE> &subset) {
+	std::optional<range> values[HAND_SIZE + 1][HAND_SIZE + 1][HAND_SIZE + 1][HAND_SIZE + 1];
+	auto touch = [&](range this_value, int north, int east, int south, int west) {
+		auto &current_value = values[north][east][south][west];
+		if (current_value.has_value()) *current_value = set_union(*current_value, this_value);
+		else current_value = this_value;
+	};
+	touch(singleton(matrix.offset),  0, 0, 0, 0);
+	size_t size_so_far = 0;
+	for (size_t card_id = 0; card_id < DECK_SIZE; ++card_id) {
+		if (!subset[card_id]) continue;
+		for (size_t north_length = 0; north_length <= HAND_SIZE && north_length <= size_so_far; ++north_length) {
+			for (size_t east_length = 0; east_length <= HAND_SIZE && east_length + north_length <= size_so_far; ++east_length) {
+				for (size_t south_length = 0; south_length <= HAND_SIZE && south_length + east_length + north_length <= size_so_far; ++south_length) {
+					size_t west_length = size_so_far - south_length - east_length - north_length;
+					if (west_length > HAND_SIZE) continue;
+					if (north_length < HAND_SIZE) {
+						touch(*values[north_length][east_length][south_length][west_length] + singleton(matrix.coef[card_id][NORTH]), north_length + 1, east_length, south_length, west_length);
+					}
+					if (east_length < HAND_SIZE) {
+						touch(*values[north_length][east_length][south_length][west_length] + singleton(matrix.coef[card_id][EAST]), north_length, east_length + 1, south_length, west_length);
+					}
+					if (south_length < HAND_SIZE) {
+						touch(*values[north_length][east_length][south_length][west_length] + singleton(matrix.coef[card_id][SOUTH]), north_length, east_length, south_length + 1, west_length);
+					}
+					if (west_length < HAND_SIZE) {
+						touch(*values[north_length][east_length][south_length][west_length] + singleton(matrix.coef[card_id][WEST]), north_length, east_length, south_length, west_length + 1);
+					}
+				}
+			}
+		}
+		size_so_far++;
+	}
+	//TODO: Keep the code above as is, rename processed_input_variable into some name indicating it's just draft version and compress only the final result into something more memory efficient
 	processed_input_variable ret;
-	static_assert(PLAYERS == 4);
-	throw "not implemented yet";
+	for (size_t north = 0; north <= HAND_SIZE; ++north) {
+		for (size_t east = 0; east <= HAND_SIZE; ++east) {
+			for (size_t south = 0; south <= HAND_SIZE; ++south) {
+				for (size_t west = 0; west <= HAND_SIZE; ++west) {
+					ret.content[north][east][south][west] = *values[north][east][south][west];
+				}
+			}
+		}
+	}
+	return ret;
 }
 compiled_expression compile_expression(const parsed_expression &expression) {
 	//TODO:

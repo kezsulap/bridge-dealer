@@ -65,10 +65,10 @@ struct expression_part {
 	size_t type;
 	std::vector<size_t> arguments; //ints (?) idk xd
 };
-//TODO: how much gain is there from optimizing all this to one dimensional vector storing data for all variables and some constexpr stuff to 
-//But definitely there is some gain from having O(HAND_SIZE^3) rather than O(HAND_SIZE^4) memory used (and probably no need to multiply by DECK_SIZE as well....)
+//TODO: how much gain is there from optimizing all this to one dimensional vector storing data for all variables and some constexpr stuff to get all the indices
+//And having O(HAND_SIZE^3) rather than O(HAND_SIZE^4) memory used
 struct processed_input_variable {
-	range content[DECK_SIZE][DECK_SIZE][DECK_SIZE][DECK_SIZE]; //TODO: make private and overload [] operator taking an array
+	range content[HAND_SIZE + 1][HAND_SIZE + 1][HAND_SIZE + 1][HAND_SIZE + 1]; //TODO: make private and overload [] operator taking an array
 };
 processed_input_variable process_input_variable(const card_player_matrix&, const std::bitset<DECK_SIZE> &subset);
 struct processed_deck_subset {

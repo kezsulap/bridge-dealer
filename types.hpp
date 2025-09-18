@@ -3,6 +3,8 @@
 #include <string>
 #include <cassert>
 const int PLAYERS = 4, SUITS = 4, RANKS = 13, DECK_SIZE = SUITS * RANKS;
+static_assert(DECK_SIZE % PLAYERS == 0);
+const int HAND_SIZE = DECK_SIZE / PLAYERS;;
 const int NORTH = 0, EAST = 1, SOUTH = 2, WEST = 3;
 const std::string PLAYERS_STR[PLAYERS] = {"NORTH", "EAST", "SOUTH", "WEST"};
 const char PLAYERS_SYMBOLS[PLAYERS] = {'N', 'E', 'S', 'W'};
