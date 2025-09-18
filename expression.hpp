@@ -2,72 +2,88 @@
 #define EXPRESSION_H
 #include "types.hpp"
 #include <vector>
-#include <memory>
-#include <variant>
-using namespace std;
-struct variable {
+#include "parser.hpp"
+#include "ranges.hpp"
+#include "board.hpp"
+#include <bitset>
+#include <array>
+struct card_player_matrix { 
 	value coef[DECK_SIZE][PLAYERS];
 	value offset; //TODO: rename to bias (?)
-	variable();
-	bool is_constant();
+	card_player_matrix();
+	bool is_constant(); //TODO: is there any point in having this function (?)
 };
-variable operator+(variable a, const variable &b);
-variable operator-(variable a, const variable &b);
-variable operator*(variable a, value b);
-variable operator*(value a, variable b);
-enum operations {ADD, SUBTRACT, MULTIPLY, DIVIDE, MODULO, TAKE_MIN, TAKE_MAX, LOGICAL_AND, LOGICAL_OR, TERNARY, LOGICAL_NOT};
-struct compound_expression;
-struct expression {
-	std::variant<std::unique_ptr<variable>, std::unique_ptr<compound_expression> > content;
+card_player_matrix operator+(card_player_matrix a, const card_player_matrix &b);
+card_player_matrix operator-(card_player_matrix a, const card_player_matrix &b);
+card_player_matrix operator*(card_player_matrix a, value b);
+card_player_matrix operator*(value a, card_player_matrix b);
+
+//TODO: improve type safety of all this e.g. distinguish between player_weigts and suit_weights
+template <size_t length> std::array<value, length> operator+(std::array<value, length> a, const std::array<value, length> &b) {
+	for (size_t i = 0; i < length; ++i) a[i] += b[i];
+	return a;
+}
+
+template <size_t length> std::array<value, length> operator-(std::array<value, length> a, const std::array<value, length> &b) {
+	for (size_t i = 0; i < length; ++i) a[i] -= b[i];
+	return a;
+}
+
+template <size_t length> std::array<value, length> operator*(value a, std::array<value, length> b) {
+	for (value &v : b) v *= a;
+	return b;
+}
+
+
+using player_weights = std::array<value, PLAYERS>;
+using suit_weights = std::array<value, SUITS>;
+using rank_weights = std::array<value, RANKS>;
+constexpr suit_weights ALL_SUITS = {1, 1, 1, 1};
+constexpr suit_weights SPADES_WEIGHTS = {1, 0, 0, 0};
+constexpr suit_weights HEARTS_WEIGHTS = {0, 1, 0, 0};
+constexpr suit_weights DIAMONDS_WEIGHTS = {0, 0, 1, 0};
+constexpr suit_weights CLUBS_WEIGHTS = {0, 0, 0, 1};
+constexpr player_weights NORTH_WEIGHTS = {1, 0, 0, 0};
+constexpr player_weights EAST_WEIGHTS = {0, 1, 0, 0};
+constexpr player_weights SOUTH_WEIGHTS = {0, 0, 1, 0};
+constexpr player_weights WEST_WEIGHTS = {0, 0, 0, 1};
+constexpr rank_weights ACES_WEIGHTS = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1};
+constexpr rank_weights KINGS_WEIGHTS = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0};
+constexpr rank_weights QUEENS_WEIGHTS = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0};
+constexpr rank_weights JACKS_WEIGHTS = {0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0};
+const rank_weights HCP = 4 * ACES_WEIGHTS + 3 * KINGS_WEIGHTS + 2 * QUEENS_WEIGHTS + 1 * JACKS_WEIGHTS;
+const rank_weights CONTROLS = 2 * ACES_WEIGHTS + 1 * KINGS_WEIGHTS;
+
+
+card_player_matrix full_product(const player_weights&, const suit_weights&, const rank_weights&);
+
+
+enum operations {ADD, SUBTRACT, MULTIPLY, DIVIDE, MODULO, TAKE_KTH, LOGICAL_AND, LOGICAL_OR, TERNARY, LOGICAL_NOT};
+//TODO: support having a constant as one of the arguments (at least when it makes sense)
+//TODO: is cast to bool needed as a separate type of operation?
+struct expression_part {
+	size_t type;
+	std::vector<size_t> arguments; //ints (?) idk xd
 };
-struct compound_expression {
-	uint8_t type;
-	std::vector <expression> subexpressions;
+//TODO: how much gain is there from optimizing all this to one dimensional vector storing data for all variables and some constexpr stuff to 
+//But definitely there is some gain from having O(HAND_SIZE^3) rather than O(HAND_SIZE^4) memory used (and probably no need to multiply by DECK_SIZE as well....)
+struct processed_input_variable {
+	range content[DECK_SIZE][DECK_SIZE][DECK_SIZE][DECK_SIZE]; //TODO: make private and overload [] operator taking an array
 };
-ostream &operator<<(ostream &o, const variable &v) {
-	bool anything = false;
-	for (int who = 0; who < PLAYERS; ++who) {
-		stringstream curr_player_desc;
-		bool any = false;
-		for (int card = 0; card < DECK; ++card) {
-			value coef = v.coef[card][who];
-			if (coef) {
-				if (coef > 1) {
-					if (any) curr_player_desc << "+";
-					curr_player_desc << coef;
-				}
-				else if (coef == 1) {
-					if (any) curr_player_desc << "+";
-				}
-				else if (coef == -1) {
-					curr_player_desc << "-";
-				}
-				else { //coef < -1
-					curr_player_desc << coef;
-				}
-				curr_player_desc << SUITS_SYMBOLS[get_suit(card)] << RANK_SYMBOLS[get_rank(card)]; //TODO: extract to some separate function
-				any = true;
-			}
-		}
-		if (any) {
-			if (anything) o << "+";
-			o << PLAYERS_STR[who] << "*(" << curr_player_desc.str() << ")";
-			anything = true;
-		}
-	}
-	if (v.offset) {
-		if (v.offset > 0 && anything) o << "+";
-		o << v.offset;
-		anything = true;
-	}
-	if (!anything) o << "0";
-	return o;
-}
-ostream &operator<<(ostream &o, const compound_expression &c) {
-	
-}
-ostream&operator<<(ostream &o, const expression &x) {
-	if (x.content.index() == 0) return o << *get<0>(x.content);
-	return o << *get<1>(x.content);
-}
+processed_input_variable process_input_variable(const card_player_matrix&, const std::bitset<DECK_SIZE> &subset);
+struct processed_deck_subset {
+	std::vector<processed_input_variable> content; //TODO: make private and overload [] operator
+};
+
+struct compiled_expression {
+	std::vector<card_player_matrix> input_variables;
+	std::vector<expression_part> parts;
+	value eval(const board &) const;
+	// range eval_partial(const board &) const; //TODO: is there any point in having this function (?)
+	processed_deck_subset process_subset(const std::bitset<DECK_SIZE> &deck_subset) const; //TODO: this (maybe) belongs in a different file
+	std::vector<std::optional<value>> partial_evaluate(const board &) const; //Returns either: nullopt if expression is no longer relevant or some value which makes everything equivalent
+};
+std::ostream &operator<<(std::ostream &o, const card_player_matrix &);
+std::ostream &operator<<(std::ostream &o, const compiled_expression &);
+compiled_expression compile_expression(const parsed_expression &expression);
 #endif
