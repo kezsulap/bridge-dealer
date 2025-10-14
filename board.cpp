@@ -2,6 +2,7 @@
 #include <vector>
 #include <algorithm>
 #include <sstream>
+#include <cstring>
 std::string generate_suit(const std::vector<int> &cards) {
 	if (cards.empty()) {
 		return "---" + std::string(RANKS - 3, ' ');
@@ -10,6 +11,40 @@ std::string generate_suit(const std::vector<int> &cards) {
 	for (int x : cards) o << RANK_SYMBOLS[x];
 	o << std::string(RANKS - cards.size(), ' ');
 	return o.str();
+}
+
+std::vector<std::string> split(const std::string& str, char delimiter) { //TODO: move to some shared location
+	std::vector<std::string> tokens;
+	size_t start = 0;
+	size_t end = str.find(delimiter);
+
+	while (end != std::string::npos) {
+		tokens.push_back(str.substr(start, end - start));
+		start = end + 1;
+		end = str.find(delimiter, start);
+	}
+	tokens.push_back(str.substr(start));
+	return tokens;
+}
+board::board(const std::string &notation) {
+	memset(who, -1, sizeof(who));
+	std::vector<std::string> hands = split(notation, ' ');
+	assert(hands.size() == PLAYERS);
+	for (size_t i = 0; i < PLAYERS; ++i) {
+		std::vector<std::string> suits = split(hands[i], '.');
+		assert(suits.size() == SUITS);
+		size_t total_cards = 0;
+		for (size_t j = 0; j < SUITS; ++j) {
+			for (char card : suits[j]) {
+				who[make_card(char_to_rank(card), j)] = i;
+				total_cards++;
+			}
+		}
+		assert(total_cards == HAND_SIZE);
+	}
+	for (size_t i = 0; i < DECK_SIZE; ++i) {
+		assert(who[i] != -1);
+	}
 }
 
 void board::output(std::ostream &o) const {

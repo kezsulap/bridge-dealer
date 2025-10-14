@@ -1,6 +1,7 @@
 #include "expression.hpp"
 #include <cstring>
 #include <sstream>
+#include <algorithm>
 card_player_matrix operator+(card_player_matrix a, const card_player_matrix &b) {
 	for (int i = 0; i < DECK_SIZE; ++i)
 		for (int j = 0; j < PLAYERS; ++j)
@@ -103,7 +104,7 @@ std::ostream &operator<<(std::ostream &o, const compiled_expression &expression)
 				if (expression.parts[i].arguments[0] == 0) o << "min(";
 				else if (expression.parts[i].arguments[0] == expression.parts[i].arguments.size() - 2) o << "max(";
 				else o << "kth_smallest(" << expression.parts[i].arguments[0] + 1 << ", ";
-				for (size_t j = 1; i < expression.parts[j].arguments.size(); ++j) {
+				for (size_t j = 1; j < expression.parts[i].arguments.size(); ++j) {
 					if (j) o << ", ";
 					o << "x_" << expression.parts[i].arguments[j];
 				}
@@ -188,8 +189,109 @@ processed_input_variable process_input_variable(const card_player_matrix& matrix
 	}
 	return ret;
 }
+struct partial_expression_part {
+	enum class argument_type {constant, input_variable, other_expression};
+	size_t type;
+	std::vector<std::pair<argument_type, size_t> > arguments;
+};
+
+value compiled_expression::eval(const board &b) const {
+	std::vector <value> values;
+	for (const card_player_matrix &input_variable : input_variables) {
+		values.push_back(input_variable.eval(b));
+	}
+	for (const expression_part &part : parts) {
+		values.push_back(part.eval(values));
+	}
+	return values.back();
+}
+
+
+value expression_part::eval(const std::vector<value> &previous_variables) const {
+	switch (type) {
+		case ADD: {
+			assert(arguments.size() == 2u);
+			return previous_variables[arguments[0]] + previous_variables[arguments[1]];
+		} break;
+		case SUBTRACT: {
+			assert(arguments.size() == 2u);
+			return previous_variables[arguments[0]] - previous_variables[arguments[1]];
+		} break;
+		case MULTIPLY: {
+			assert(arguments.size() == 2u);
+			return previous_variables[arguments[0]] * previous_variables[arguments[1]];
+		} break;
+		case DIVIDE: {
+			assert(arguments.size() == 2u);
+			return previous_variables[arguments[0]] / previous_variables[arguments[1]]; //TODO: what to do if there's a division by 0, or MIN_INT / -1? Raise some exception I guess
+		} break;
+		case MODULO: {
+			assert(arguments.size() == 2u);
+			return previous_variables[arguments[0]] % previous_variables[arguments[1]]; //TODO: what to do if there's a division by 0, or MIN_INT % -1? Raise some exception I guess
+		} break;
+		case TAKE_KTH: {
+			assert(!arguments.empty());
+			std::vector<value> argument_previous_variables;
+			for (size_t i = 1; i < arguments.size(); ++i) argument_previous_variables.push_back(previous_variables[arguments[i]]);
+			std::nth_element(argument_previous_variables.begin(), argument_previous_variables.begin() + arguments[0], argument_previous_variables.end());
+			return argument_previous_variables[arguments[0]];
+		} break;
+		case LOGICAL_AND: {
+			assert(arguments.size() == 2u);
+			return previous_variables[arguments[0]] && previous_variables[arguments[1]];
+		} break;
+		case LOGICAL_OR: {
+			assert(arguments.size() == 2u);
+			return previous_variables[arguments[0]] || previous_variables[arguments[1]];
+		} break;
+		case TERNARY: {
+			assert(arguments.size() == 3u);
+			return previous_variables[arguments[0]] ? previous_variables[arguments[1]] : previous_variables[arguments[2]];
+		} break;
+		case LOGICAL_NOT: {
+			assert(arguments.size() == 1u);
+			return !previous_variables[arguments[0]];
+		} break;
+		default: assert(false);
+	}
+	return 0;
+}
+
+
+struct expression_parser {
+	std::vector<card_player_matrix> input_variables;
+	std::vector<partial_expression_part> subexpressions;
+	player_weights parse_players(const parsed_expression &subexpression) {
+		
+	}
+	//How to make both south * 2 and 2 * south or anything alike work?
+	suit_weights parse_suits(const parsed_expression &subexpression) {
+		
+	}
+	std::pair<partial_expression_part::argument_type, size_t> run_recursive(const parsed_expression &subexpression) {
+		;
+	}
+	compiled_expression finalize() {
+		;
+	// compiled_expression result;
+	// result.input_variables = input_variables;
+	// for (auto &subexpression : subexpressions) {
+		// expression_part processed_expression_part;
+		// processed_expression_part.type = subexpression.type;
+		// result.parts.push_back(processed_expression_part);
+	// }
+	}
+	compiled_expression compile(const parsed_expression &expression) {
+		run_recursive(expression);
+		return finalize();
+	}
+};
+
 compiled_expression compile_expression(const parsed_expression &expression) {
 	//TODO:
 	//Identify any common parts and extract them into a shared card_player_matrix
-	//
+
+	expression_parser parser;
+	parser.run_recursive(expression);
+	return parser.finalize();
 }

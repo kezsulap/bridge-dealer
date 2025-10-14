@@ -11,6 +11,11 @@ struct card_player_matrix {
 	value coef[DECK_SIZE][PLAYERS];
 	value offset; //TODO: rename to bias (?)
 	card_player_matrix();
+	value eval(const board &b) const {
+		value result = offset;
+		for (size_t i = 0; i < DECK_SIZE; ++i) result += coef[i][b.who[i]];
+		return result;
+	};
 	bool is_constant(); //TODO: is there any point in having this function (?)
 };
 card_player_matrix operator+(card_player_matrix a, const card_player_matrix &b);
@@ -47,12 +52,15 @@ constexpr player_weights NORTH_WEIGHTS = {1, 0, 0, 0};
 constexpr player_weights EAST_WEIGHTS = {0, 1, 0, 0};
 constexpr player_weights SOUTH_WEIGHTS = {0, 0, 1, 0};
 constexpr player_weights WEST_WEIGHTS = {0, 0, 0, 1};
+constexpr player_weights NS_WEIGHTS = {1, 0, 1, 0};
+constexpr player_weights EW_WEIGHTS = {0, 1, 0, 1};
 constexpr rank_weights ACES_WEIGHTS = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1};
 constexpr rank_weights KINGS_WEIGHTS = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0};
 constexpr rank_weights QUEENS_WEIGHTS = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0};
 constexpr rank_weights JACKS_WEIGHTS = {0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0};
-const rank_weights HCP = 4 * ACES_WEIGHTS + 3 * KINGS_WEIGHTS + 2 * QUEENS_WEIGHTS + 1 * JACKS_WEIGHTS;
-const rank_weights CONTROLS = 2 * ACES_WEIGHTS + 1 * KINGS_WEIGHTS;
+constexpr rank_weights ALL_RANKS = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+const rank_weights HCP_WEIGHTS = 4 * ACES_WEIGHTS + 3 * KINGS_WEIGHTS + 2 * QUEENS_WEIGHTS + 1 * JACKS_WEIGHTS;
+const rank_weights CONTROLS_WEIGHTS = 2 * ACES_WEIGHTS + 1 * KINGS_WEIGHTS;
 
 
 card_player_matrix full_product(const player_weights&, const suit_weights&, const rank_weights&);
@@ -64,6 +72,7 @@ enum operations {ADD, SUBTRACT, MULTIPLY, DIVIDE, MODULO, TAKE_KTH, LOGICAL_AND,
 struct expression_part {
 	size_t type;
 	std::vector<size_t> arguments; //ints (?) idk xd
+	value eval(const std::vector<value> &previous_variables) const;
 };
 //TODO: how much gain is there from optimizing all this to one dimensional vector storing data for all variables and some constexpr stuff to get all the indices
 //And having O(HAND_SIZE^3) rather than O(HAND_SIZE^4) memory used
@@ -79,7 +88,7 @@ struct compiled_expression {
 	std::vector<card_player_matrix> input_variables;
 	std::vector<expression_part> parts;
 	value eval(const board &) const;
-	// range eval_partial(const board &) const; //TODO: is there any point in having this function (?)
+	// range eval_partial(const board &) const; //TODO: is there any point in having this function (?) I guess it's meant to contain some cards with UNASSIGNED status
 	processed_deck_subset process_subset(const std::bitset<DECK_SIZE> &deck_subset) const; //TODO: this (maybe) belongs in a different file
 	std::vector<std::optional<value>> partial_evaluate(const board &) const; //Returns either: nullopt if expression is no longer relevant or some value which makes everything equivalent
 };
