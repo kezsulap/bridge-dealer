@@ -100,6 +100,9 @@ bool is_valid_identifier(const std::string &s) {
 bool parsed_expression::operator==(const parsed_expression &oth) const {
 	return value == oth.value && sub_expressions == oth.sub_expressions;
 }
+bool parsed_expression::is_token() const {
+	return sub_expressions.empty();
+}
 bool parsed_expression::operator!=(const parsed_expression &oth) const {
 	return !(*this == oth);
 }

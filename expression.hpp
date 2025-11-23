@@ -38,6 +38,10 @@ template <size_t length> std::array<value, length> operator*(value a, std::array
 	for (value &v : b) v *= a;
 	return b;
 }
+template <size_t length> std::array<value, length> operator*(std::array<value, length> a, value b) {
+	for (value &v : a) v *= b;
+	return a;
+}
 
 
 using player_weights = std::array<value, PLAYERS>;
@@ -48,17 +52,20 @@ constexpr suit_weights SPADES_WEIGHTS = {1, 0, 0, 0};
 constexpr suit_weights HEARTS_WEIGHTS = {0, 1, 0, 0};
 constexpr suit_weights DIAMONDS_WEIGHTS = {0, 0, 1, 0};
 constexpr suit_weights CLUBS_WEIGHTS = {0, 0, 0, 1};
+constexpr suit_weights ZERO_SUIT_WEIGHTS = {0, 0, 0, 0};
 constexpr player_weights NORTH_WEIGHTS = {1, 0, 0, 0};
 constexpr player_weights EAST_WEIGHTS = {0, 1, 0, 0};
 constexpr player_weights SOUTH_WEIGHTS = {0, 0, 1, 0};
 constexpr player_weights WEST_WEIGHTS = {0, 0, 0, 1};
 constexpr player_weights NS_WEIGHTS = {1, 0, 1, 0};
 constexpr player_weights EW_WEIGHTS = {0, 1, 0, 1};
+constexpr player_weights ZERO_PLAYER_WEIGHTS = {0, 0, 0, 0};
 constexpr rank_weights ACES_WEIGHTS = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1};
 constexpr rank_weights KINGS_WEIGHTS = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0};
 constexpr rank_weights QUEENS_WEIGHTS = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0};
 constexpr rank_weights JACKS_WEIGHTS = {0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0};
 constexpr rank_weights ALL_RANKS = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+constexpr rank_weights ZERO_RANK_WEIGHTS = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 const rank_weights HCP_WEIGHTS = 4 * ACES_WEIGHTS + 3 * KINGS_WEIGHTS + 2 * QUEENS_WEIGHTS + 1 * JACKS_WEIGHTS;
 const rank_weights CONTROLS_WEIGHTS = 2 * ACES_WEIGHTS + 1 * KINGS_WEIGHTS;
 
@@ -91,6 +98,20 @@ struct compiled_expression {
 	// range eval_partial(const board &) const; //TODO: is there any point in having this function (?) I guess it's meant to contain some cards with UNASSIGNED status
 	processed_deck_subset process_subset(const std::bitset<DECK_SIZE> &deck_subset) const; //TODO: this (maybe) belongs in a different file
 	std::vector<std::optional<value>> partial_evaluate(const board &) const; //Returns either: nullopt if expression is no longer relevant or some value which makes everything equivalent
+};
+struct partial_expression_part {
+	enum class argument_type {constant, input_variable, other_expression};
+	size_t type;
+	std::vector<std::pair<argument_type, size_t> > arguments;
+};
+struct expression_compiler {
+	std::vector<card_player_matrix> input_variables;
+	std::vector<partial_expression_part> subexpressions;
+	static player_weights parse_players(const parsed_expression &subexpression); 
+	static suit_weights parse_suits(const parsed_expression &subexpression); 
+	std::pair<partial_expression_part::argument_type, size_t> run_recursive(const parsed_expression &/*subexpression*/);
+	compiled_expression finalize();
+	compiled_expression compile(const parsed_expression &expression);
 };
 std::ostream &operator<<(std::ostream &o, const card_player_matrix &);
 std::ostream &operator<<(std::ostream &o, const compiled_expression &);

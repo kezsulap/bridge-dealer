@@ -1,7 +1,9 @@
 #include "expression.hpp"
+#include "types.hpp"
 #include <cstring>
 #include <sstream>
 #include <algorithm>
+#include <map>
 card_player_matrix operator+(card_player_matrix a, const card_player_matrix &b) {
 	for (int i = 0; i < DECK_SIZE; ++i)
 		for (int j = 0; j < PLAYERS; ++j)
@@ -189,11 +191,6 @@ processed_input_variable process_input_variable(const card_player_matrix& matrix
 	}
 	return ret;
 }
-struct partial_expression_part {
-	enum class argument_type {constant, input_variable, other_expression};
-	size_t type;
-	std::vector<std::pair<argument_type, size_t> > arguments;
-};
 
 value compiled_expression::eval(const board &b) const {
 	std::vector <value> values;
@@ -257,41 +254,197 @@ value expression_part::eval(const std::vector<value> &previous_variables) const 
 	return 0;
 }
 
+std::string to_lowercase(std::string str) {
+	std::transform(str.begin(), str.end(), str.begin(),
+	               [](unsigned char c){ return std::tolower(c); });
+	return str;
 
-struct expression_parser {
-	std::vector<card_player_matrix> input_variables;
-	std::vector<partial_expression_part> subexpressions;
-	player_weights parse_players(const parsed_expression &subexpression) {
-		
+}
+
+value parse_number(const parsed_expression &expression) {
+	//TODO: decide what to do with leading zeros
+	//TODO: make it raise on overflow
+	if (expression.is_token()) {
+		try {
+			static_assert(std::is_same<value, int>::value, "Use std::stol/std::stoll for long/long long value type");
+			std::size_t pos;
+			value v = std::stoi(expression.value, &pos);
+			assert(pos == expression.value.size());
+			return v;
+		}
+		catch (const std::invalid_argument &) {
+			throw parse_error{"Expected integer, got " + expression.value};
+		}
+		catch (const std::out_of_range &) {
+			throw parse_error{"Integer out of range: " + expression.value};
+		}
 	}
-	//How to make both south * 2 and 2 * south or anything alike work?
-	suit_weights parse_suits(const parsed_expression &subexpression) {
-		
+	else {
+		throw parse_error{"NOT IMPLEMENTED YET"};
+		//RUN THROUGH ALL THOSE FUCKING OPERATORS 😨
 	}
-	std::pair<partial_expression_part::argument_type, size_t> run_recursive(const parsed_expression &subexpression) {
-		;
+}
+
+std::vector <std::pair <std::string, int> > parse_string_with_weights(const parsed_expression &expression, bool allow_negation) {
+	if (expression.is_token()) {
+		return {{expression.value, 1}};
 	}
-	compiled_expression finalize() {
-		;
-	// compiled_expression result;
-	// result.input_variables = input_variables;
-	// for (auto &subexpression : subexpressions) {
-		// expression_part processed_expression_part;
-		// processed_expression_part.type = subexpression.type;
-		// result.parts.push_back(processed_expression_part);
-	// }
+	else if (expression.value == "!") {
+		if (allow_negation) {
+			assert(expression.sub_expressions.size() == 1);
+			if (!expression.sub_expressions[0].is_token()) {
+				throw parse_error{"! expected to get a token, got compound expression"};
+			}
+			return {{"!" + expression.sub_expressions[0].value, 1}};
+		}
+		else {
+			throw parse_error{"Negation not allowed in this context"}; //TODO: better error message
+		}
 	}
-	compiled_expression compile(const parsed_expression &expression) {
-		run_recursive(expression);
-		return finalize();
+	else if (expression.value == "+") {
+		assert(expression.sub_expressions.size() == 2u);
+		std::vector <std::pair <std::string, int> > LHS = parse_string_with_weights(expression.sub_expressions[0], allow_negation);
+		std::vector <std::pair <std::string, int> > RHS = parse_string_with_weights(expression.sub_expressions[1], allow_negation);
+		LHS.insert(LHS.end(), RHS.begin(), RHS.end());
+		return LHS;
 	}
-};
+	else if (expression.value == "-") {
+		assert(expression.sub_expressions.size() == 2u);
+		std::vector <std::pair <std::string, int> > LHS = parse_string_with_weights(expression.sub_expressions[0], allow_negation);
+		std::vector <std::pair <std::string, int> > RHS = parse_string_with_weights(expression.sub_expressions[1], allow_negation);
+		for (auto &[token, coefficient] : RHS) LHS.emplace_back(token, -coefficient);
+		return LHS;
+	}
+	else if (expression.value == "*") {
+		assert(expression.sub_expressions.size() == 2u);
+		std::optional<value> LHS, RHS;
+		std::string LHS_error, RHS_error;
+		try {
+			LHS = parse_number(expression.sub_expressions[0]);
+		}
+		catch (parse_error e) {
+			LHS_error = e.content;
+		}
+		try {
+			RHS = parse_number(expression.sub_expressions[1]);
+		}
+		catch (parse_error e) {
+			RHS_error = e.content;
+		}
+		if (LHS.has_value() && RHS.has_value()) {
+			throw parse_error{"Expected number * string or string * number, got number * number"};
+		}
+		if (!LHS.has_value() && !RHS.has_value()) {
+			throw parse_error{"Expected number * string or string * number, got \"" + LHS_error + "\" * \"" + RHS_error + "\""};
+		}
+		if (LHS.has_value()) {
+			std::vector <std::pair <std::string, int> > RHS_weights = parse_string_with_weights(expression.sub_expressions[1], allow_negation);
+			for (auto &[token, coefficient] : RHS_weights) {
+				coefficient *= *LHS; //TODO: raise if overflow
+			}
+			return RHS_weights;
+		}
+		else {
+			std::vector <std::pair <std::string, int> > LHS_weights = parse_string_with_weights(expression.sub_expressions[0], allow_negation);
+			for (auto &[token, coefficient] : LHS_weights) {
+				coefficient *= *RHS; //TODO: raise if overflow
+			}
+			return LHS_weights;
+		}
+	}
+	else {
+		throw parse_error{"Operator " + expression.value + " not allowed in this context"};
+	}
+}
+
+
+
+player_weights expression_compiler::parse_players(const parsed_expression &subexpression) {
+	static const std::map <std::string, player_weights> known_players = {
+		{"north", NORTH_WEIGHTS}, {"n", NORTH_WEIGHTS},
+		{"south", SOUTH_WEIGHTS}, {"s", SOUTH_WEIGHTS},
+		{"west", WEST_WEIGHTS}, {"w", WEST_WEIGHTS},
+		{"east", EAST_WEIGHTS}, {"e", EAST_WEIGHTS},
+		{"ns", NS_WEIGHTS}, {"sn", NS_WEIGHTS},
+		{"ew", EW_WEIGHTS}, {"we", EW_WEIGHTS},
+	};
+	auto extract_weights = [](const std::string &x) {
+		std::string x_lower = to_lowercase(x);
+		auto it = known_players.find(x_lower);
+		if (it == known_players.end()) {
+			throw parse_error{"Unknown player(s) " + x};
+		}
+		return it->second;
+	};
+	player_weights ret = ZERO_PLAYER_WEIGHTS;
+	std::vector <std::pair <std::string, value> > coefficients = parse_string_with_weights(subexpression, false);
+	for (auto [token, coefficient] : coefficients) {
+		ret = ret + extract_weights(token) * coefficient; //TODO: raise if overflow
+																											//TODO: this can be made into (or decide not to do so, instead function with _safe in it's name
+	}
+	return ret;
+}
+suit_weights expression_compiler::parse_suits(const parsed_expression &subexpression) {
+	static const std::map <std::string, suit_weights> known_suits = {
+		{"spade", SPADES_WEIGHTS},
+		{"heart", HEARTS_WEIGHTS},
+		{"diamond", DIAMONDS_WEIGHTS},
+		{"club", CLUBS_WEIGHTS},
+		{"major", SPADES_WEIGHTS + HEARTS_WEIGHTS},
+		{"minor", DIAMONDS_WEIGHTS + CLUBS_WEIGHTS},
+		{"red", HEARTS_WEIGHTS + DIAMONDS_WEIGHTS},
+		{"black", SPADES_WEIGHTS + CLUBS_WEIGHTS},
+		{"round", HEARTS_WEIGHTS + CLUBS_WEIGHTS},
+		{"pointed", SPADES_WEIGHTS + DIAMONDS_WEIGHTS},
+	};
+	auto extract_weights = [](const std::string &x) {
+		std::string x_lower = to_lowercase(x);
+		bool complement = false;
+		if (!x_lower.empty() && x_lower[0] == '!') {
+			x_lower = x_lower.substr(1);
+			complement = true;
+		}
+		{
+			auto it = known_suits.find(x_lower);
+			if (it != known_suits.end()) return complement ? ALL_SUITS - it->second : it->second;
+		}
+		if (x_lower.back() == 's') {
+			auto it = known_suits.find(x_lower.substr(0, x_lower.size() - 1));
+			if (it != known_suits.end()) return complement ? ALL_SUITS - it->second : it->second;
+		}
+		throw parse_error{"Unknown suit " + x};
+	};
+	suit_weights ret = ZERO_SUIT_WEIGHTS;
+	std::vector <std::pair <std::string, value> > coefficients = parse_string_with_weights(subexpression, true);
+	for (auto [token, coefficient] : coefficients) {
+		ret = ret + extract_weights(token) * coefficient; //TODO: raise if overflow
+																											//TODO: this can be made into (or decide not to do so, instead function with _safe in it's name
+	}
+	return ret;
+}
+std::pair<partial_expression_part::argument_type, size_t> expression_compiler::run_recursive(const parsed_expression &/*subexpression*/) {
+	throw "NOT IMPLEMENTED YET";
+}
+compiled_expression expression_compiler::finalize() {
+	throw "NOT IMPLEMENTED YET";
+// compiled_expression result;
+// result.input_variables = input_variables;
+// for (auto &subexpression : subexpressions) {
+	// expression_part processed_expression_part;
+	// processed_expression_part.type = subexpression.type;
+	// result.parts.push_back(processed_expression_part);
+// }
+}
+compiled_expression expression_compiler::compile(const parsed_expression &expression) {
+	run_recursive(expression);
+	return finalize();
+}
 
 compiled_expression compile_expression(const parsed_expression &expression) {
 	//TODO:
 	//Identify any common parts and extract them into a shared card_player_matrix
 
-	expression_parser parser;
+	expression_compiler parser;
 	parser.run_recursive(expression);
 	return parser.finalize();
 }

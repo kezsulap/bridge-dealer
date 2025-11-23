@@ -7,6 +7,7 @@ std::vector <std::string> tokenize(const std::string &s);
 struct parsed_expression {
 	std::string value; //TODO: Some union type to store CHAINED COMPARISON not as ""
 	std::vector<parsed_expression> sub_expressions;
+	bool is_token() const;
 	bool operator==(const parsed_expression &oth) const;
 	bool operator!=(const parsed_expression &oth) const;
 };
