@@ -3,6 +3,7 @@
 #include "types.hpp"
 #include <ostream>
 #include <string>
+#include <random>
 const int8_t UNASSIGNED_CARD = -1;
 struct partial_board;
 
@@ -12,7 +13,9 @@ struct board {
 	void output(std::ostream &o) const;
 	partial_board to_partial() const;
 	board(const std::string &notation);
+	board(std::mt19937 &rng);
 };
+
 
 struct partial_board {
 	//this one is not supposed to have UNASSIGNED_CARDs

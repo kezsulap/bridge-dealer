@@ -73,7 +73,8 @@ const rank_weights CONTROLS_WEIGHTS = 2 * ACES_WEIGHTS + 1 * KINGS_WEIGHTS;
 card_player_matrix full_product(const player_weights&, const suit_weights&, const rank_weights&);
 
 
-enum operations {ADD, SUBTRACT, MULTIPLY, DIVIDE, MODULO, TAKE_KTH, LOGICAL_AND, LOGICAL_OR, TERNARY, LOGICAL_NOT};
+//add LOGICAL_XOR, ALL COMPARISON OPERATORS (or not all, there's no point in having both <= and >=, just swap the operands), add them to all spots where needed (like parser, evaluator etc.)
+enum operations {ADD, SUBTRACT, MULTIPLY, DIVIDE, MODULO, TAKE_KTH, LOGICAL_AND, LOGICAL_OR, TERNARY, LOGICAL_NOT, LOGICAL_XOR, LEQ, LESS_THAN, EQUAL_TO, NEQ}; //TODO: make this into enum class
 //TODO: support having a constant as one of the arguments (at least when it makes sense)
 //TODO: is cast to bool needed as a separate type of operation?
 struct expression_part {
@@ -82,7 +83,7 @@ struct expression_part {
 	value eval(const std::vector<value> &previous_variables) const;
 };
 //TODO: how much gain is there from optimizing all this to one dimensional vector storing data for all variables and some constexpr stuff to get all the indices
-//And having O(HAND_SIZE^3) rather than O(HAND_SIZE^4) memory used
+//And having O(HAND_SIZE^3) rather than O(HAND_SIZE^4) memory used, also, divided by some 3! or anything alike
 struct processed_input_variable {
 	range content[HAND_SIZE + 1][HAND_SIZE + 1][HAND_SIZE + 1][HAND_SIZE + 1]; //TODO: make private and overload [] operator taking an array
 };
@@ -92,6 +93,7 @@ struct processed_deck_subset {
 };
 
 struct compiled_expression {
+	std::vector<value> used_constants; //TODO: remove, replace probably with variants of operations having hardcoded parameters
 	std::vector<card_player_matrix> input_variables;
 	std::vector<expression_part> parts;
 	value eval(const board &) const;
@@ -100,17 +102,18 @@ struct compiled_expression {
 	std::vector<std::optional<value>> partial_evaluate(const board &) const; //Returns either: nullopt if expression is no longer relevant or some value which makes everything equivalent
 };
 struct partial_expression_part {
-	enum class argument_type {constant, input_variable, other_expression};
+	enum class argument_type {constant, input_variable, other_expression}; //TODO: this doesn't belong here, put it elsewhere
 	size_t type;
 	std::vector<std::pair<argument_type, size_t> > arguments;
 };
 struct expression_compiler {
+	std::vector<value> used_constants; //TODO: remove, replace probably with variants of operations having hardcoded parameters
 	std::vector<card_player_matrix> input_variables;
 	std::vector<partial_expression_part> subexpressions;
 	static player_weights parse_players(const parsed_expression &subexpression); 
 	static suit_weights parse_suits(const parsed_expression &subexpression); 
 	std::pair<partial_expression_part::argument_type, size_t> run_recursive(const parsed_expression &/*subexpression*/);
-	compiled_expression finalize();
+	compiled_expression finalize(std::pair<partial_expression_part::argument_type, size_t>);
 	compiled_expression compile(const parsed_expression &expression);
 };
 std::ostream &operator<<(std::ostream &o, const card_player_matrix &);

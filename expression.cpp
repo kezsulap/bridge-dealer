@@ -1,6 +1,7 @@
 #include "expression.hpp"
 #include "types.hpp"
 #include <cstring>
+#include <optional>
 #include <sstream>
 #include <algorithm>
 #include <map>
@@ -75,13 +76,16 @@ std::ostream &operator<<(std::ostream &o, const card_player_matrix &v) {
 	return o;
 }
 std::ostream &operator<<(std::ostream &o, const compiled_expression &expression) {
+	for (size_t i = 0; i < expression.used_constants.size(); ++i) {
+		o << "x_" << i << " := " << expression.used_constants[i] << "\n";
+	}
 	for (size_t i = 0; i < expression.input_variables.size(); ++i) {
-		o << "x_" << i << " := " << expression.input_variables[i] << "\n";
+		o << "x_" << i + expression.used_constants.size() << " := " << expression.input_variables[i] << "\n";
 	}
 	for (size_t i = 0; i < expression.parts.size(); ++i) {
-		o << "x_" << i + expression.input_variables.size() << " := ";
+		o << "x_" << i + expression.used_constants.size() + expression.input_variables.size() << " := ";
 		switch(expression.parts[i].type) {
-			case ADD: {
+			case ADD: { //TODO: don't copypaste for those which just have argument_1 operator argument_2
 				assert(expression.parts[i].arguments.size() == 2u);
 				o << "x_" << expression.parts[i].arguments[0] << " + x_" << expression.parts[i].arguments[1];
 			} break;
@@ -127,6 +131,22 @@ std::ostream &operator<<(std::ostream &o, const compiled_expression &expression)
 			case LOGICAL_NOT: {
 				assert(expression.parts[i].arguments.size() == 1u);
 				o << "!x_" << expression.parts[i].arguments[0];
+			} break;
+			case LESS_THAN: {
+				assert(expression.parts[i].arguments.size() == 2u);
+				o << "x_" << expression.parts[i].arguments[0] << " < x_" << expression.parts[i].arguments[1];
+			} break;
+			case LEQ: {
+				assert(expression.parts[i].arguments.size() == 2u);
+				o << "x_" << expression.parts[i].arguments[0] << " <= x_" << expression.parts[i].arguments[1];
+			} break;
+			case EQUAL_TO: {
+				assert(expression.parts[i].arguments.size() == 2u);
+				o << "x_" << expression.parts[i].arguments[0] << " == x_" << expression.parts[i].arguments[1];
+			} break;
+			case NEQ: {
+				assert(expression.parts[i].arguments.size() == 2u);
+				o << "x_" << expression.parts[i].arguments[0] << " != x_" << expression.parts[i].arguments[1];
 			} break;
 			default: assert(false);
 		};
@@ -193,7 +213,7 @@ processed_input_variable process_input_variable(const card_player_matrix& matrix
 }
 
 value compiled_expression::eval(const board &b) const {
-	std::vector <value> values;
+	std::vector <value> values = used_constants;
 	for (const card_player_matrix &input_variable : input_variables) {
 		values.push_back(input_variable.eval(b));
 	}
@@ -248,6 +268,22 @@ value expression_part::eval(const std::vector<value> &previous_variables) const 
 		case LOGICAL_NOT: {
 			assert(arguments.size() == 1u);
 			return !previous_variables[arguments[0]];
+		} break;
+		case LEQ: {
+			assert(arguments.size() == 2u);
+			return previous_variables[arguments[0]] <= previous_variables[arguments[1]];
+		} break;
+		case LESS_THAN: {
+			assert(arguments.size() == 2u);
+			return previous_variables[arguments[0]] < previous_variables[arguments[1]];
+		} break;
+		case EQUAL_TO: {
+			assert(arguments.size() == 2u);
+			return previous_variables[arguments[0]] == previous_variables[arguments[1]];
+		} break;
+		case NEQ: {
+			assert(arguments.size() == 2u);
+			return previous_variables[arguments[0]] != previous_variables[arguments[1]];
 		} break;
 		default: assert(false);
 	}
@@ -384,8 +420,34 @@ player_weights expression_compiler::parse_players(const parsed_expression &subex
 	}
 	return ret;
 }
-suit_weights expression_compiler::parse_suits(const parsed_expression &subexpression) {
+
+std::optional<suit_weights> try_parse_suit_weights(const std::string &x) {
 	static const std::map <std::string, suit_weights> known_suits = {
+		{"spade", SPADES_WEIGHTS},
+		{"heart", HEARTS_WEIGHTS},
+		{"diamond", DIAMONDS_WEIGHTS},
+		{"club", CLUBS_WEIGHTS},
+		{"major", SPADES_WEIGHTS + HEARTS_WEIGHTS},
+		{"minor", DIAMONDS_WEIGHTS + CLUBS_WEIGHTS},
+		{"red", HEARTS_WEIGHTS + DIAMONDS_WEIGHTS},
+		{"black", SPADES_WEIGHTS + CLUBS_WEIGHTS},
+		{"round", HEARTS_WEIGHTS + CLUBS_WEIGHTS},
+		{"pointed", SPADES_WEIGHTS + DIAMONDS_WEIGHTS},
+	};
+	std::string x_lower = to_lowercase(x);
+	{
+		auto it = known_suits.find(x_lower);
+		if (it != known_suits.end()) return it->second;
+	}
+	if (x_lower.back() == 's') {
+		auto it = known_suits.find(x_lower.substr(0, x_lower.size() - 1));
+		if (it != known_suits.end()) return it->second;
+	}
+	return std::nullopt;
+}
+
+suit_weights expression_compiler::parse_suits(const parsed_expression &subexpression) {
+	static const std::map <std::string, suit_weights> known_suits = { //TODO: avoid copy-pasting, use above function instead
 		{"spade", SPADES_WEIGHTS},
 		{"heart", HEARTS_WEIGHTS},
 		{"diamond", DIAMONDS_WEIGHTS},
@@ -422,29 +484,99 @@ suit_weights expression_compiler::parse_suits(const parsed_expression &subexpres
 	}
 	return ret;
 }
-std::pair<partial_expression_part::argument_type, size_t> expression_compiler::run_recursive(const parsed_expression &/*subexpression*/) {
+std::pair<partial_expression_part::argument_type, size_t> expression_compiler::run_recursive(const parsed_expression &subexpression) {
+	if (subexpression.is_token()) {
+		value x = parse_number(subexpression);
+		size_t this_index = used_constants.size();
+		used_constants.push_back(x);
+		return {partial_expression_part::argument_type::constant, this_index};
+	}
+	else if (subexpression.is_function()) {
+		{
+			std::optional<suit_weights> suits = try_parse_suit_weights(subexpression.value);
+			if (suits.has_value()) {
+				assert(subexpression.sub_expressions.size() == 1u); //TODO: throw parse_error instead
+				player_weights players = parse_players(subexpression.sub_expressions[0]);
+				card_player_matrix this_weights = full_product(players, *suits, ALL_RANKS);
+				size_t this_index = input_variables.size();
+				input_variables.push_back(this_weights);
+				return {partial_expression_part::argument_type::input_variable, this_index};
+			}
+		}
+		if (subexpression.value == "hcp") { //TODO: case insensitive
+			assert(subexpression.sub_expressions.size() == 1u); //TODO: support hcp(player, suits)
+			player_weights players = parse_players(subexpression.sub_expressions[0]);
+			card_player_matrix this_weights = full_product(players, ALL_SUITS, HCP_WEIGHTS); //TODO: this block is repetitive, compress it somehow (function/macro/whatever is better)
+			size_t this_index = input_variables.size();
+			input_variables.push_back(this_weights);
+			return {partial_expression_part::argument_type::input_variable, this_index};
+		}
+	}
+	else if (subexpression.is_operator()) {
+		size_t operation_type;
+		bool flip = false;
+		//TODO: unary minus and plus
+		if (subexpression.value == "+") operation_type = ADD;
+		else if (subexpression.value == "-") operation_type = SUBTRACT;
+		else if (subexpression.value == "*") operation_type = MULTIPLY;
+		else if (subexpression.value == "/") operation_type = DIVIDE;
+		else if (subexpression.value == "&&") operation_type = LOGICAL_AND;
+		else if (subexpression.value == "||") operation_type = LOGICAL_OR;
+		else if (subexpression.value == "<=") operation_type = LOGICAL_XOR;
+		else if (subexpression.value == "!") operation_type = LOGICAL_NOT;
+		else if (subexpression.value == "?:") operation_type = TERNARY;
+		else if (subexpression.value == "<=") operation_type = LEQ;
+		else if (subexpression.value == ">=") {operation_type = LEQ; flip = true;}
+		else if (subexpression.value == "<") operation_type = LESS_THAN;
+		else if (subexpression.value == ">") {operation_type = LESS_THAN; flip = true;}
+		else if (subexpression.value == "==") operation_type = EQUAL_TO;
+		else if (subexpression.value == "==") operation_type = NEQ;
+		else assert(false); //Are there any other operators left (?)
+		std::vector<std::pair <partial_expression_part::argument_type, size_t> > compiled_subexpressions;
+		for (auto &sub : subexpression.sub_expressions) {
+			compiled_subexpressions.emplace_back(run_recursive(sub));
+		}
+		if (flip) {
+			assert(compiled_subexpressions.size() == 2u);
+			swap(compiled_subexpressions[0], compiled_subexpressions[1]);
+		}
+		size_t this_index = subexpressions.size();
+		subexpressions.push_back({operation_type, compiled_subexpressions});
+		return {partial_expression_part::argument_type::other_expression, this_index};
+	}
+	else if (subexpression.is_chained_comparison()) {
+		assert(false); //Not implemented yet
+	}
+	else {
+		assert(false); //UNKNOWN subexpression type
+	}
 	throw "NOT IMPLEMENTED YET";
 }
-compiled_expression expression_compiler::finalize() {
-	throw "NOT IMPLEMENTED YET";
-// compiled_expression result;
-// result.input_variables = input_variables;
-// for (auto &subexpression : subexpressions) {
-	// expression_part processed_expression_part;
-	// processed_expression_part.type = subexpression.type;
-	// result.parts.push_back(processed_expression_part);
-// }
+compiled_expression expression_compiler::finalize(std::pair<partial_expression_part::argument_type, size_t> final_id) {
+	auto convert_to_index = [&](std::pair<partial_expression_part::argument_type, size_t> x) -> size_t {
+		switch(x.first) {
+			case partial_expression_part::argument_type::constant: return x.second;
+			case partial_expression_part::argument_type::input_variable: return used_constants.size() + x.second;
+			case partial_expression_part::argument_type::other_expression: return used_constants.size() + input_variables.size() + x.second;
+			default: assert(false);
+		}
+	};
+	compiled_expression result;
+	result.used_constants = used_constants; //std::move() ?
+	result.input_variables = input_variables;
+	for (auto &subexpression : subexpressions) {
+		expression_part processed_expression_part;
+		processed_expression_part.type = subexpression.type; //TODO: treat constant parameters differently (e.g kth_element)
+		for (auto &x : subexpression.arguments) processed_expression_part.arguments.push_back(convert_to_index(x));
+		result.parts.push_back(processed_expression_part);
+	}
+	return result;
 }
 compiled_expression expression_compiler::compile(const parsed_expression &expression) {
-	run_recursive(expression);
-	return finalize();
+	return finalize(run_recursive(expression));
 }
 
 compiled_expression compile_expression(const parsed_expression &expression) {
-	//TODO:
-	//Identify any common parts and extract them into a shared card_player_matrix
-
 	expression_compiler parser;
-	parser.run_recursive(expression);
-	return parser.finalize();
+	return parser.compile(expression);
 }

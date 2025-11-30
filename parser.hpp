@@ -8,6 +8,9 @@ struct parsed_expression {
 	std::string value; //TODO: Some union type to store CHAINED COMPARISON not as ""
 	std::vector<parsed_expression> sub_expressions;
 	bool is_token() const;
+	bool is_operator() const;
+	bool is_function() const;
+	bool is_chained_comparison() const;
 	bool operator==(const parsed_expression &oth) const;
 	bool operator!=(const parsed_expression &oth) const;
 };

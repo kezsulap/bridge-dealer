@@ -1,4 +1,5 @@
 #include "board.hpp"
+#include <random>
 #include <vector>
 #include <algorithm>
 #include <sstream>
@@ -81,4 +82,8 @@ void board::output(std::ostream &o) const {
 			}
 		}
 	}
+}
+board::board(std::mt19937 &rng) {
+	for (int i = 0; i < DECK_SIZE; ++i) who[i] = i % PLAYERS;
+	std::shuffle(who, who + DECK_SIZE, rng);
 }

@@ -71,7 +71,7 @@ variable make_suit_length(const std::vector <string> &arguments, int suit, const
 
 // ()	Function call
 // + -	Unary plus and minus
-// ! Logical NOT and bitwise NOT
+// ! Logical NOT
 // * / %	Multiplication, division, and remainder	Left-to-right
 // + -	Addition and subtraction
 // < <=	For relational operators < and ≤ respectively
@@ -96,6 +96,9 @@ bool is_valid_identifier(const std::string &s) {
 	for (char c : s) if (!isalnum(c) && c != '_') return false;
 	return true;
 }
+bool is_operator(const std::string &x) {
+	return is_in(x, {"*", "/", "%", "+", "-", "==", "<", ">", "<=", ">=", "!=", "&&", "||", "^^", "!"});
+}
 
 bool parsed_expression::operator==(const parsed_expression &oth) const {
 	return value == oth.value && sub_expressions == oth.sub_expressions;
@@ -103,13 +106,19 @@ bool parsed_expression::operator==(const parsed_expression &oth) const {
 bool parsed_expression::is_token() const {
 	return sub_expressions.empty();
 }
+bool parsed_expression::is_operator() const {
+	return ::is_operator(value);
+}
+bool parsed_expression::is_function() const {
+	return !is_chained_comparison() && !is_token() && !is_operator();
+}
+bool parsed_expression::is_chained_comparison() const {
+	return value.empty(); //TODO: make this cleaner then this ugly hack
+}
 bool parsed_expression::operator!=(const parsed_expression &oth) const {
 	return !(*this == oth);
 }
 
-bool is_operator(const std::string &x) {
-	return is_in(x, {"*", "/", "%", "+", "-", "==", "<", ">", "<=", ">=", "!=", "&&", "||", "^^", "!"});
-}
 
 parsed_expression parse_tokenized_expression(const std::vector <std::string> &tokens) {
 	assert(!tokens.empty());
