@@ -151,6 +151,9 @@ range take_kth(const std::vector<range> &ranges, size_t k) {
 	std::nth_element(ends.begin(), ends.begin() + k, ends.end());
 	return {begins[k], ends[k]};
 }
+bool is_singleton(range x) {
+	return x.first == x.second;
+}
 std::tuple<std::optional<value>, std::optional<value>> replace_irrelevant_min(range a, range b) {
 	if (a.second <= b.first) {
 		return {std::nullopt, std::numeric_limits<value>::max()};

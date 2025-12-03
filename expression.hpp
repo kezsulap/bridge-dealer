@@ -9,7 +9,7 @@
 #include <array>
 struct card_player_matrix { 
 	value coef[DECK_SIZE][PLAYERS];
-	value offset; //TODO: rename to bias (?)
+	value offset; //TODO: rename to bias (?) (or refactor to entirely remove)
 	card_player_matrix();
 	value eval(const board &b) const {
 		value result = offset;
@@ -77,21 +77,27 @@ card_player_matrix full_product(const player_weights&, const suit_weights&, cons
 enum operations {ADD, SUBTRACT, MULTIPLY, DIVIDE, MODULO, TAKE_KTH, LOGICAL_AND, LOGICAL_OR, TERNARY, LOGICAL_NOT, LOGICAL_XOR, LEQ, LESS_THAN, EQUAL_TO, NEQ}; //TODO: make this into enum class
 //TODO: support having a constant as one of the arguments (at least when it makes sense)
 //TODO: is cast to bool needed as a separate type of operation?
-struct expression_part {
+struct expression_part { //TODO: rename to anything reasonable xd
 	size_t type;
 	std::vector<size_t> arguments; //ints (?) idk xd
 	value eval(const std::vector<value> &previous_variables) const;
+	range eval(const std::vector<range> &previous_variables) const;
 };
 //TODO: how much gain is there from optimizing all this to one dimensional vector storing data for all variables and some constexpr stuff to get all the indices
 //And having O(HAND_SIZE^3) rather than O(HAND_SIZE^4) memory used, also, divided by some 3! or anything alike
 struct processed_input_variable {
 	range content[HAND_SIZE + 1][HAND_SIZE + 1][HAND_SIZE + 1][HAND_SIZE + 1]; //TODO: make private and overload [] operator taking an array
 };
+
+std::bitset<DECK_SIZE> full_deck(); //TODO: make this into just constexpr rather than function call
+
 processed_input_variable process_input_variable(const card_player_matrix&, const std::bitset<DECK_SIZE> &subset);
-struct processed_deck_subset {
+struct processed_deck_subset { //TODO: do I want it as a separate class, rather then just vector?
 	std::vector<processed_input_variable> content; //TODO: make private and overload [] operator
 };
 
+using partial_evaluation = std::vector<std::optional<value> > ;
+using dp_state = std::pair<partial_evaluation, std::array<int, PLAYERS> >;
 struct compiled_expression {
 	std::vector<value> used_constants; //TODO: remove, replace probably with variants of operations having hardcoded parameters
 	std::vector<card_player_matrix> input_variables;
@@ -99,13 +105,18 @@ struct compiled_expression {
 	value eval(const board &) const;
 	// range eval_partial(const board &) const; //TODO: is there any point in having this function (?) I guess it's meant to contain some cards with UNASSIGNED status
 	processed_deck_subset process_subset(const std::bitset<DECK_SIZE> &deck_subset) const; //TODO: this (maybe) belongs in a different file
-	std::vector<std::optional<value>> partial_evaluate(const board &) const; //Returns either: nullopt if expression is no longer relevant or some value which makes everything equivalent
+	// std::vector<std::optional<value>> partial_evaluate(const board &) const; //Returns either: nullopt if expression is no longer relevant or some value which makes everything equivalent
+	dp_state make_initial_state() const;
+	void run_dp() const;
+	dp_state append_card(const dp_state &, size_t, size_t, const std::vector<processed_input_variable>&) const;
 };
 struct partial_expression_part {
 	enum class argument_type {constant, input_variable, other_expression}; //TODO: this doesn't belong here, put it elsewhere
 	size_t type;
 	std::vector<std::pair<argument_type, size_t> > arguments;
 };
+
+
 struct expression_compiler {
 	std::vector<value> used_constants; //TODO: remove, replace probably with variants of operations having hardcoded parameters
 	std::vector<card_player_matrix> input_variables;

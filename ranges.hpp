@@ -37,6 +37,8 @@ range logical_or(range a, range b);
 range logical_not(range a);
 std::ostream &operator<<(std::ostream &, range);
 
+bool is_singleton(range x);
+
 std::tuple<std::optional<value>, std::optional<value>> replace_irrelevant_min(range a, range b);
 std::tuple<std::optional<value>, std::optional<value>> replace_irrelevant_max(range a, range b);
 std::tuple<std::optional<value>, std::optional<value>, std::optional<value> > replace_irrelevant_ternary(range a, range b, range c);

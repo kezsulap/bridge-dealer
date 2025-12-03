@@ -1,5 +1,7 @@
 #include "expression.hpp"
+#include "output_operators.hpp"
 #include "types.hpp"
+#include <atomic>
 #include <cstring>
 #include <optional>
 #include <sstream>
@@ -211,6 +213,7 @@ processed_input_variable process_input_variable(const card_player_matrix& matrix
 	}
 	return ret;
 }
+std::bitset<DECK_SIZE> full_deck() {return std::bitset<DECK_SIZE>().set();}
 
 value compiled_expression::eval(const board &b) const {
 	std::vector <value> values = used_constants;
@@ -287,7 +290,66 @@ value expression_part::eval(const std::vector<value> &previous_variables) const 
 		} break;
 		default: assert(false);
 	}
-	return 0;
+}
+range expression_part::eval(const std::vector<range> &previous_variables) const {
+	switch (type) {
+		case ADD: {
+			assert(arguments.size() == 2u);
+			return previous_variables[arguments[0]] + previous_variables[arguments[1]];
+		} break;
+		case SUBTRACT: {
+			assert(arguments.size() == 2u);
+			return previous_variables[arguments[0]] - previous_variables[arguments[1]];
+		} break;
+		case MULTIPLY: {
+			assert(arguments.size() == 2u);
+			return previous_variables[arguments[0]] * previous_variables[arguments[1]];
+		} break;
+		case DIVIDE: {
+			assert(arguments.size() == 2u);
+			return previous_variables[arguments[0]] / previous_variables[arguments[1]]; //TODO: what to do if there's a division by 0, or MIN_INT / -1? Raise some exception I guess
+		} break;
+		case MODULO: {
+			assert(arguments.size() == 2u);
+			return previous_variables[arguments[0]] % previous_variables[arguments[1]]; //TODO: what to do if there's a division by 0, or MIN_INT % -1? Raise some exception I guess
+		} break;
+		case TAKE_KTH: {
+										 assert(false); //TODO
+		} break;
+		case LOGICAL_AND: {
+			assert(arguments.size() == 2u);
+			return logical_and(previous_variables[arguments[0]], previous_variables[arguments[1]]);
+		} break;
+		case LOGICAL_OR: {
+			assert(arguments.size() == 2u);
+			return logical_or(previous_variables[arguments[0]], previous_variables[arguments[1]]);
+		} break;
+		case TERNARY: {
+			assert(arguments.size() == 3u);
+			return ternary(previous_variables[arguments[0]], previous_variables[arguments[1]], previous_variables[arguments[2]]);
+		} break;
+		case LOGICAL_NOT: {
+			assert(arguments.size() == 1u);
+			return logical_not(previous_variables[arguments[0]]);
+		} break;
+		case LEQ: {
+			assert(arguments.size() == 2u);
+			return less_equal(previous_variables[arguments[0]], previous_variables[arguments[1]]);
+		} break;
+		case LESS_THAN: {
+			assert(arguments.size() == 2u);
+			return less_than(previous_variables[arguments[0]], previous_variables[arguments[1]]);
+		} break;
+		case EQUAL_TO: {
+			assert(arguments.size() == 2u);
+			return equal(previous_variables[arguments[0]], previous_variables[arguments[1]]);
+		} break;
+		case NEQ: {
+			assert(arguments.size() == 2u);
+			return not_equal(previous_variables[arguments[0]], previous_variables[arguments[1]]);
+		} break;
+		default: assert(false);
+	}
 }
 
 std::string to_lowercase(std::string str) {
@@ -579,4 +641,119 @@ compiled_expression expression_compiler::compile(const parsed_expression &expres
 compiled_expression compile_expression(const parsed_expression &expression) {
 	expression_compiler parser;
 	return parser.compile(expression);
+}
+//TODO: test DP with some expressions without any compound part, just one input variable/one constant
+dp_state compiled_expression::make_initial_state() const {
+	std::vector<range> values;
+	for (value x : used_constants) values.push_back(singleton(x));
+	for (auto input_variable : input_variables) {
+		values.push_back(process_input_variable(input_variable, full_deck()).content[HAND_SIZE][HAND_SIZE][HAND_SIZE][HAND_SIZE]);
+	}
+	for (auto &expression_part : this->parts) {
+		values.push_back(expression_part.eval(values));
+	}
+	std::cerr << values << "\n";
+	std::vector <bool> relevant(values.size()); //TODO: refactor this to not contain constants
+	relevant.back() = true;
+	size_t offset = used_constants.size() + input_variables.size(); //Make one function to get the offset, rather than compute it every time explicitely
+	for (int i = (int)parts.size() - 1; i >= 0; --i) {
+		if (relevant[offset + i] && !is_singleton(values[offset + i])) {
+			for (size_t x : parts[i].arguments) { //TODO: this would break for kth and other stuff which doesn't just have references to previous elements, but also constants
+				relevant[x] = true;
+			}
+		}
+	}
+	std::cerr << "relevant = " << relevant << "\n";
+	partial_evaluation ret(values.size());
+	for (size_t i = 0; i < used_constants.size(); ++i) ret[i] = std::nullopt;
+	for (size_t i = 0; i < input_variables.size(); ++i) ret[i + used_constants.size()] = relevant[i + used_constants.size()] ? std::optional<value>(input_variables[i].offset) : std::nullopt;
+	for (size_t i = used_constants.size() + input_variables.size(); i < values.size(); ++i) {
+		if (relevant[i] && is_singleton(values[i])) ret[i] = values[i].first; //TODO: wrap this get_first into any member function (or just extract_only_value which raises if not singleton (?))
+		else ret[i] = std::nullopt;
+	}
+	return {ret, std::array<value, PLAYERS>()};
+}
+
+
+
+
+
+dp_state compiled_expression::append_card(const dp_state &state, size_t card, size_t player, const std::vector<processed_input_variable>&preprocessed_variables) const {
+	// std::cerr << "Try append to " << state << ", give " << card_to_str(card) << " to " << PLAYERS_STR[player] << "\n";
+	auto &[current_eval, current_count] = state;
+	std::array<int, PLAYERS> new_count = current_count;
+	new_count[player]++;
+	std::vector<range> values;
+	partial_evaluation ret(used_constants.size() + input_variables.size() + parts.size());
+	for (size_t i = 0; i < used_constants.size(); ++i) {
+		values.push_back(singleton(used_constants[i]));
+	}
+	for (size_t i = 0; i < input_variables.size(); ++i) {
+		if (current_eval[i + used_constants.size()].has_value()) {
+			// std::cerr << " variable " << i << " still has value" << std::endl;
+			ret[i + used_constants.size()] = (*current_eval[i + used_constants.size()] + input_variables[i].coef[card][player]);
+			static_assert(PLAYERS == 4);
+			values.push_back(singleton(*ret[i + used_constants.size()]) + preprocessed_variables[i].content[HAND_SIZE - new_count[0]][HAND_SIZE - new_count[1]][HAND_SIZE - new_count[2]][HAND_SIZE - new_count[3]]); //TODO: refactor with ranges overload for int + range
+		}
+		else {
+			// std::cerr << " variable " << i << " is null" << std::endl;
+			values.push_back(singleton(0)); //Irrelevant placeholder, it won't be read anyway
+		}
+	}
+	size_t offset = used_constants.size() + input_variables.size(); //Make one function to get the offset, rather than compute it every time explicitely
+	for (size_t i = 0; i < parts.size(); ++i) {
+		if (current_eval[i + offset].has_value()) values.push_back(singleton(*current_eval[i + offset]));
+		else values.push_back(parts[i].eval(values));
+	}
+	std::vector <bool> relevant(values.size()); //TODO: refactor this to not contain constants
+	relevant.back() = true;
+	for (int i = (int)parts.size() - 1; i >= 0; --i) {
+		if (relevant[offset + i] && !is_singleton(values[offset + i])) {
+			for (size_t x : parts[i].arguments) { //TODO: this would break for kth and other stuff which doesn't just have references to previous elements, but also constants
+				relevant[x] = true;
+			}
+		}
+	}
+	// std::cerr << "values = " << values << "\n";
+	// std::cerr << "relevant = " << relevant << "\n";
+	for (size_t i = 0; i < used_constants.size(); ++i) ret[i] = std::nullopt;
+	for (size_t i = 0; i < input_variables.size(); ++i) {
+		if (!relevant[i + used_constants.size()]) ret[i + used_constants.size()] = std::nullopt;
+	}
+	for (size_t i = used_constants.size() + input_variables.size(); i < values.size(); ++i) {
+		if (relevant[i] && is_singleton(values[i])) ret[i] = values[i].first; //TODO: wrap this get_first into any member function (or just extract_only_value which raises if not singleton (?))
+		else ret[i] = std::nullopt;
+	}
+	// std::cerr << "Try append to " << state << ", give " << card_to_str(card) << " to " << PLAYERS_STR[player] << ", got " << ret << ", " << new_count << "\n";
+	bool any_non_null = false;
+	for (auto &x : ret) if (x.has_value()) any_non_null = true;
+	assert(any_non_null);
+	return {ret, new_count};
+}
+
+bool can_append_card(const dp_state &dp, size_t player) {
+	return dp.second[player] < HAND_SIZE;
+}
+
+void compiled_expression::run_dp() const {
+	std::map <dp_state, board_count> dp;
+	dp[make_initial_state()] = 1;
+	std::bitset<DECK_SIZE> still_undealt = full_deck();
+	std::cerr << "dp = " << dp << "\n";
+	for (size_t card = 0; card < DECK_SIZE; ++card) { //TODO: better order, also for tests allow just random order
+		std::cerr << "Adding " << card_to_str(card) << "\n";
+		std::map <dp_state, board_count> new_dp;
+		still_undealt[card] = 0;
+		std::vector<processed_input_variable> processed_variables;
+		for (auto &input_variable : input_variables) processed_variables.push_back(process_input_variable(input_variable, still_undealt));
+		for (auto &[state, count] : dp) {
+			for (size_t player = 0; player < PLAYERS; ++player) {
+				if (can_append_card(state, player)) {
+					new_dp[append_card(state, card, player, processed_variables)] += count; //TODO: filter out boards with final output already decided to be something
+				}
+			}
+		}
+		dp = std::move(new_dp);
+	}
+	std::cerr << "dp = " << dp << "\n";
 }

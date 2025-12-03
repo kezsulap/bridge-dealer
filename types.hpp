@@ -33,5 +33,8 @@ inline int make_card(int rank, int suit) {
 	assert(suit >= 0 && suit < SUITS);
 	return rank * SUITS + suit;
 }
+inline std::string card_to_str(int card) {
+	return SUITS_SYMBOLS[get_suit(card)] + RANK_SYMBOLS[get_rank(card)];
+}
 using value = int;
 #endif
