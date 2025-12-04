@@ -123,6 +123,7 @@ struct expression_compiler {
 	std::vector<partial_expression_part> subexpressions;
 	static player_weights parse_players(const parsed_expression &subexpression); 
 	static suit_weights parse_suits(const parsed_expression &subexpression); 
+	static rank_weights parse_rank(const parsed_expression &subexpression);
 	std::pair<partial_expression_part::argument_type, size_t> run_recursive(const parsed_expression &/*subexpression*/);
 	compiled_expression finalize(std::pair<partial_expression_part::argument_type, size_t>);
 	compiled_expression compile(const parsed_expression &expression);

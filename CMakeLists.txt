@@ -1,6 +1,6 @@
 project(bridge_generator)
 set(CMAKE_CXX_STANDARD 20)
-SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -g -Wall -Wshadow -Wextra")
+SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -g -Wall -Wshadow -Wextra -O3")
 add_executable(ranges_test ranges.cpp unit-tests/ranges-test.cpp unit-tests/test_utils.cpp)
 add_executable(parser_test parser.cpp unit-tests/parser-test.cpp unit-tests/test_utils.cpp)
 add_executable(expression_test expression.cpp board.cpp ranges.cpp parser.cpp unit-tests/expression-test.cpp unit-tests/test_utils.cpp)

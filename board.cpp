@@ -87,3 +87,13 @@ board::board(std::mt19937 &rng) {
 	for (int i = 0; i < DECK_SIZE; ++i) who[i] = i % PLAYERS;
 	std::shuffle(who, who + DECK_SIZE, rng);
 }
+
+
+board::board(int8_t *content) {
+	memcpy(who, content, sizeof(who));
+}
+
+board partial_board::finalize() const {
+	for (auto &x : who) assert(x >= 0 && x < 4);
+	return board((int8_t*)who);
+}

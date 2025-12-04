@@ -14,11 +14,11 @@ struct board {
 	partial_board to_partial() const;
 	board(const std::string &notation);
 	board(std::mt19937 &rng);
+	board(int8_t *content);
 };
 
 
 struct partial_board {
-	//this one is not supposed to have UNASSIGNED_CARDs
 	int8_t who[DECK_SIZE];
 	void output(std::ostream &o) const;
 	board finalize() const;

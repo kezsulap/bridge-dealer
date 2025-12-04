@@ -1,7 +1,6 @@
 #include "expression.hpp"
 #include "output_operators.hpp"
 #include "types.hpp"
-#include <atomic>
 #include <cstring>
 #include <optional>
 #include <sstream>
@@ -150,7 +149,10 @@ std::ostream &operator<<(std::ostream &o, const compiled_expression &expression)
 				assert(expression.parts[i].arguments.size() == 2u);
 				o << "x_" << expression.parts[i].arguments[0] << " != x_" << expression.parts[i].arguments[1];
 			} break;
-			default: assert(false);
+			default: {
+								 std::cerr << "expression.parts[i].type = " << expression.parts[i].type << std::endl;
+								 assert(false);
+							 }
 		};
 		o << "\n";
 	}
@@ -206,7 +208,7 @@ processed_input_variable process_input_variable(const card_player_matrix& matrix
 		for (size_t east = 0; east <= HAND_SIZE; ++east) {
 			for (size_t south = 0; south <= HAND_SIZE; ++south) {
 				for (size_t west = 0; west <= HAND_SIZE; ++west) {
-					ret.content[north][east][south][west] = *values[north][east][south][west];
+					ret.content[north][east][south][west] = values[north][east][south][west].has_value() ? *values[north][east][south][west] : range{0, 0}; //TODO: this is ugly, but probably will be deleted anyway when optimized to store this stuff in a different way
 				}
 			}
 		}
@@ -508,6 +510,29 @@ std::optional<suit_weights> try_parse_suit_weights(const std::string &x) {
 	return std::nullopt;
 }
 
+rank_weights expression_compiler::parse_rank(const parsed_expression &subexpression) {
+	static const std::map<std::string, rank_weights> known_ranks = {
+		{"jack", JACKS_WEIGHTS},
+		{"j", JACKS_WEIGHTS},
+		{"queen", QUEENS_WEIGHTS},
+		{"q", QUEENS_WEIGHTS},
+		{"king", KINGS_WEIGHTS},
+		{"k", KINGS_WEIGHTS},
+		{"ace", ACES_WEIGHTS},
+		{"a", ACES_WEIGHTS}, //TODO: something more robust (including tens_plus or anything.....)
+	};
+	auto extract_weights = [](const std::string &x) {
+		std::string x_lower = to_lowercase(x);
+		auto it = known_ranks.find(x_lower);
+		if (it == known_ranks.end()) {
+			throw parse_error{"Unknown rank(s) " + x};
+		}
+		return it->second;
+	};
+	assert(subexpression.is_token());
+	return extract_weights(subexpression.value);
+}
+
 suit_weights expression_compiler::parse_suits(const parsed_expression &subexpression) {
 	static const std::map <std::string, suit_weights> known_suits = { //TODO: avoid copy-pasting, use above function instead
 		{"spade", SPADES_WEIGHTS},
@@ -573,6 +598,16 @@ std::pair<partial_expression_part::argument_type, size_t> expression_compiler::r
 			input_variables.push_back(this_weights);
 			return {partial_expression_part::argument_type::input_variable, this_index};
 		}
+		if (subexpression.value == "has") { //TODO: case insensitive
+			assert(subexpression.sub_expressions.size() == 3u); 
+			player_weights players = parse_players(subexpression.sub_expressions[0]);
+			suit_weights suits = parse_suits(subexpression.sub_expressions[1]); //Possibly allow both suit rank and rank suit (or even all 3! orders, because why not)
+			rank_weights ranks = parse_rank(subexpression.sub_expressions[2]);
+			card_player_matrix this_weights = full_product(players, suits, ranks); //TODO: this block is repetitive, compress it somehow (function/macro/whatever is better)
+			size_t this_index = input_variables.size();
+			input_variables.push_back(this_weights);
+			return {partial_expression_part::argument_type::input_variable, this_index};
+		}
 	}
 	else if (subexpression.is_operator()) {
 		size_t operation_type;
@@ -584,7 +619,7 @@ std::pair<partial_expression_part::argument_type, size_t> expression_compiler::r
 		else if (subexpression.value == "/") operation_type = DIVIDE;
 		else if (subexpression.value == "&&") operation_type = LOGICAL_AND;
 		else if (subexpression.value == "||") operation_type = LOGICAL_OR;
-		else if (subexpression.value == "<=") operation_type = LOGICAL_XOR;
+		else if (subexpression.value == "^^") operation_type = LOGICAL_XOR;
 		else if (subexpression.value == "!") operation_type = LOGICAL_NOT;
 		else if (subexpression.value == "?:") operation_type = TERNARY;
 		else if (subexpression.value == "<=") operation_type = LEQ;
@@ -652,7 +687,7 @@ dp_state compiled_expression::make_initial_state() const {
 	for (auto &expression_part : this->parts) {
 		values.push_back(expression_part.eval(values));
 	}
-	std::cerr << values << "\n";
+	// std::cerr << values << "\n";
 	std::vector <bool> relevant(values.size()); //TODO: refactor this to not contain constants
 	relevant.back() = true;
 	size_t offset = used_constants.size() + input_variables.size(); //Make one function to get the offset, rather than compute it every time explicitely
@@ -663,7 +698,7 @@ dp_state compiled_expression::make_initial_state() const {
 			}
 		}
 	}
-	std::cerr << "relevant = " << relevant << "\n";
+	// std::cerr << "relevant = " << relevant << "\n";
 	partial_evaluation ret(values.size());
 	for (size_t i = 0; i < used_constants.size(); ++i) ret[i] = std::nullopt;
 	for (size_t i = 0; i < input_variables.size(); ++i) ret[i + used_constants.size()] = relevant[i + used_constants.size()] ? std::optional<value>(input_variables[i].offset) : std::nullopt;
@@ -735,25 +770,145 @@ bool can_append_card(const dp_state &dp, size_t player) {
 	return dp.second[player] < HAND_SIZE;
 }
 
+struct dp_value {
+	board_count count;
+	std::vector <std::pair<const dp_value *, size_t> > previous;
+	void append(const dp_value &x, size_t player) {
+		previous.emplace_back(&x, player);
+		count += x.count;
+	}
+};
+
+std::ostream &operator<<(std::ostream &o, const dp_value &x) {
+	return o << x.count;
+}
+
+#include <random>
+
+using i128 = __int128_t;
+using u128 = __uint128_t;
+
+static u128 rand_u128(std::mt19937_64 &rng) {
+    u128 hi = rng();
+    u128 lo = rng();
+    return (hi << 64) | lo;
+}
+
+// Uniform __int128 in [a, b)
+i128 uniform_i128(i128 a, i128 b, std::mt19937_64 &rng) {
+    u128 range = (u128)(b - a);
+
+    // Compute largest multiple of range that fits in 128 bits
+    u128 limit = (~u128{0} / range) * range;  // equivalent to floor(2^128 / range) * range
+
+    while (true) {
+        u128 r = rand_u128(rng);
+        if (r < limit) {
+            return (i128)(r % range) + a;
+        }
+    }
+}
+
+
 void compiled_expression::run_dp() const {
-	std::map <dp_state, board_count> dp;
-	dp[make_initial_state()] = 1;
+	std::vector<std::map <dp_state, dp_value> > dp(DECK_SIZE + 1); //TODO: after a run is done I only need values, memory used to store keys is wasted, store values elsewhere (just in a vector (?))
+	dp[0][make_initial_state()] = {1, {}};
 	std::bitset<DECK_SIZE> still_undealt = full_deck();
-	std::cerr << "dp = " << dp << "\n";
-	for (size_t card = 0; card < DECK_SIZE; ++card) { //TODO: better order, also for tests allow just random order
-		std::cerr << "Adding " << card_to_str(card) << "\n";
-		std::map <dp_state, board_count> new_dp;
+	// std::cerr << "dp = " << dp << "\n";
+	// size_t total_size = 0;
+	// total_size += dp.size();
+	std::vector <size_t> cards;
+	// for (size_t card = 0; card < DECK_SIZE; ++card) cards.push_back(card);
+	// for (size_t suit = 0; suit < SUITS; ++suit) for (size_t rank = 0; rank < RANKS; ++rank) cards.push_back(make_card(rank, suit));//TODO: better order, also for tests allow just random order
+	for (size_t suit = 0; suit < SUITS; ++suit) for (int rank = RANKS - 1; rank >= 0; --rank) cards.push_back(make_card(rank, suit));//TODO: better order, also for tests allow just random order
+	for (size_t i = 0; i < DECK_SIZE; ++i) {
+		size_t card = cards[i];
+		auto &current_dp = dp[i];
+		auto &new_dp = dp[i + 1];
+		// std::cerr << "Adding " << card_to_str(card) << "\n";
 		still_undealt[card] = 0;
 		std::vector<processed_input_variable> processed_variables;
 		for (auto &input_variable : input_variables) processed_variables.push_back(process_input_variable(input_variable, still_undealt));
-		for (auto &[state, count] : dp) {
+		for (auto &[state, count] : current_dp) {
 			for (size_t player = 0; player < PLAYERS; ++player) {
 				if (can_append_card(state, player)) {
-					new_dp[append_card(state, card, player, processed_variables)] += count; //TODO: filter out boards with final output already decided to be something
+					new_dp[append_card(state, card, player, processed_variables)].append(count, player); //TODO: filter out boards with final output already decided to be something
 				}
 			}
 		}
-		dp = std::move(new_dp);
+		// std::cerr << "produced dp.size() = " << new_dp.size() << "\n";
+		// total_size += currentdp.size();
+		// std::cerr << "dp.size() = " << dp.size() << "\n";
 	}
-	std::cerr << "dp = " << dp << "\n";
+	// std::cerr << "dp = " << dp << "\n";
+	// std::cerr << "total_size = " << total_size << "\n";
+	std::mt19937_64 rng(0);
+	std::vector<board> boards;
+	size_t BLOCK_SIZE = 5;
+	auto dump = [&]() { //TODO: make this into a "normal" function
+		std::vector<std::string> content;
+		for (auto &b : boards) {
+			std::stringstream s;
+			b.output(s);
+			content.push_back(s.str());
+		}
+		std::vector<size_t> indices(content.size());
+		while (true) {
+			bool any = false;
+			for (size_t i = 0; i < content.size(); ++i) {
+				if (indices[i] >= content[i].size()) continue;
+				while (indices[i] < content[i].size() && content[i][indices[i]] != '\n') {
+					std::cerr << content[i][indices[i]];
+					indices[i]++;
+					any = true;
+				}
+				std::cerr << "|  ";
+				indices[i]++;
+			}
+			std::cerr << "\n";
+			if (!any) break;
+		}
+		for (int _ = 0; _ < 210; ++_)
+			std::cerr << "-";
+		std::cerr << "\n";
+	};
+	board_count matching_cou = 0;
+	for (size_t _ = 0; _ < 20; ++_) {
+		partial_board b;
+		const dp_value * pos = nullptr;
+		for (auto &[state, value] : dp.back()) {
+			if (*state.first.back() == 1) {
+				pos = &value;
+				matching_cou = value.count;
+			}
+		}
+		if (pos == nullptr) {
+			std::cerr << "Conditions are contradictive\n";
+			return;
+		}
+		for (int i = DECK_SIZE - 1; i >= 0; --i) {
+			size_t card = cards[i];
+			i128 current_count = pos->count;
+			i128 x = uniform_i128(0, current_count, rng);
+			size_t who = -1;
+			for (auto &[previous_node, player] : pos->previous) {
+				if (x < previous_node->count) {
+					pos = previous_node;
+					who = player;
+					break;
+				}
+				else {
+					x -= previous_node->count;
+				}
+			}
+			b.who[card] = who;
+		}
+		boards.push_back(b.finalize());
+		if (boards.size() == BLOCK_SIZE) {
+			dump();
+			boards.clear();
+		}
+	}
+	if (!boards.empty()) dump();
+	std::cerr << "(matching = " << matching_cou << ") / (all_bords_count = 53644737765488792839237440000) = " << matching_cou / (long double) 53644737765488792839237440000.0L;
 }
