@@ -825,7 +825,7 @@ void compiled_expression::run_dp() const {
 		size_t card = cards[i];
 		auto &current_dp = dp[i];
 		auto &new_dp = dp[i + 1];
-		// std::cerr << "Adding " << card_to_str(card) << "\n";
+		std::cerr << "Adding " << card_to_str(card) << "\n";
 		still_undealt[card] = 0;
 		std::vector<processed_input_variable> processed_variables;
 		for (auto &input_variable : input_variables) processed_variables.push_back(process_input_variable(input_variable, still_undealt));
@@ -836,7 +836,7 @@ void compiled_expression::run_dp() const {
 				}
 			}
 		}
-		// std::cerr << "produced dp.size() = " << new_dp.size() << "\n";
+		std::cerr << "produced dp.size() = " << new_dp.size() << "\n";
 		// total_size += currentdp.size();
 		// std::cerr << "dp.size() = " << dp.size() << "\n";
 	}
@@ -844,7 +844,7 @@ void compiled_expression::run_dp() const {
 	// std::cerr << "total_size = " << total_size << "\n";
 	std::mt19937_64 rng(0);
 	std::vector<board> boards;
-	size_t BLOCK_SIZE = 5;
+	size_t BLOCK_SIZE = 6;
 	auto dump = [&]() { //TODO: make this into a "normal" function
 		std::vector<std::string> content;
 		for (auto &b : boards) {
@@ -862,18 +862,18 @@ void compiled_expression::run_dp() const {
 					indices[i]++;
 					any = true;
 				}
-				std::cerr << "|  ";
+				std::cerr << "| ";
 				indices[i]++;
 			}
 			std::cerr << "\n";
 			if (!any) break;
 		}
-		for (int _ = 0; _ < 210; ++_)
+		for (int _ = 0; _ < 230; ++_)
 			std::cerr << "-";
 		std::cerr << "\n";
 	};
 	board_count matching_cou = 0;
-	for (size_t _ = 0; _ < 20; ++_) {
+	for (size_t _ = 0; _ < 24; ++_) {
 		partial_board b;
 		const dp_value * pos = nullptr;
 		for (auto &[state, value] : dp.back()) {
