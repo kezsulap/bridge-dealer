@@ -877,7 +877,7 @@ std::pair<board_count, std::vector<board> > compiled_expression::run_dp(const si
 			std::cerr << "\n";
 			if (!any) break;
 		}
-		for (int _ = 0; _ < 230; ++_)
+		for (int _ = 0; _ < 245; ++_)
 			std::cerr << "-";
 		std::cerr << "\n";
 	};
