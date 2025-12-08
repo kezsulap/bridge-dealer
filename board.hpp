@@ -15,6 +15,7 @@ struct board {
 	board(const std::string &notation);
 	board(std::mt19937 &rng);
 	board(int8_t *content);
+	std::string to_notation() const;
 };
 
 

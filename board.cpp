@@ -97,3 +97,20 @@ board partial_board::finalize() const {
 	for (auto &x : who) assert(x >= 0 && x < 4);
 	return board((int8_t*)who);
 }
+
+
+std::string board::to_notation() const {
+	std::stringstream s;
+	for (int player = 0; player < PLAYERS; ++player) {
+		if (player) s << " ";
+		for (int suit = 0; suit < SUITS; ++suit) {
+			if (suit) s << ".";
+			for (int rank = RANKS - 1; rank >= 0; --rank) {
+				if (who[make_card(rank, suit)] == player) {
+					s << RANK_SYMBOLS[rank];
+				}
+			}
+		}
+	}
+	return s.str();
+}

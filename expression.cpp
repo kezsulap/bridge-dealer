@@ -510,8 +510,8 @@ std::optional<suit_weights> try_parse_suit_weights(const std::string &x) {
 	return std::nullopt;
 }
 
-rank_weights expression_compiler::parse_rank(const parsed_expression &subexpression) {
-	static const std::map<std::string, rank_weights> known_ranks = {
+std::map<std::string, rank_weights> generate_known_ranks() {
+	std::map<std::string, rank_weights> ret = {
 		{"jack", JACKS_WEIGHTS},
 		{"j", JACKS_WEIGHTS},
 		{"queen", QUEENS_WEIGHTS},
@@ -521,6 +521,14 @@ rank_weights expression_compiler::parse_rank(const parsed_expression &subexpress
 		{"ace", ACES_WEIGHTS},
 		{"a", ACES_WEIGHTS}, //TODO: something more robust (including tens_plus or anything.....)
 	};
+	for (size_t rank = 0; rank < RANKS; ++rank) {
+		ret[std::string(1, tolower(RANK_SYMBOLS[rank]))] = make_singleton_weight<RANKS>(rank);
+	}
+	return ret;
+}
+
+rank_weights expression_compiler::parse_rank(const parsed_expression &subexpression) {
+	static const std::map<std::string, rank_weights> known_ranks = generate_known_ranks();;
 	auto extract_weights = [](const std::string &x) {
 		std::string x_lower = to_lowercase(x);
 		auto it = known_ranks.find(x_lower);
@@ -810,7 +818,7 @@ i128 uniform_i128(i128 a, i128 b, std::mt19937_64 &rng) {
 }
 
 
-void compiled_expression::run_dp() const {
+std::pair<board_count, std::vector<board> > compiled_expression::run_dp(const size_t count) const {
 	std::vector<std::map <dp_state, dp_value> > dp(DECK_SIZE + 1); //TODO: after a run is done I only need values, memory used to store keys is wasted, store values elsewhere (just in a vector (?))
 	dp[0][make_initial_state()] = {1, {}};
 	std::bitset<DECK_SIZE> still_undealt = full_deck();
@@ -820,7 +828,8 @@ void compiled_expression::run_dp() const {
 	std::vector <size_t> cards;
 	// for (size_t card = 0; card < DECK_SIZE; ++card) cards.push_back(card);
 	// for (size_t suit = 0; suit < SUITS; ++suit) for (size_t rank = 0; rank < RANKS; ++rank) cards.push_back(make_card(rank, suit));//TODO: better order, also for tests allow just random order
-	for (size_t suit = 0; suit < SUITS; ++suit) for (int rank = RANKS - 1; rank >= 0; --rank) cards.push_back(make_card(rank, suit));//TODO: better order, also for tests allow just random order
+	// for (size_t suit = 0; suit < SUITS; ++suit) for (int rank = RANKS - 1; rank >= 0; --rank) cards.push_back(make_card(rank, suit));//TODO: better order, also for tests allow just random order
+	for (int rank = RANKS - 1; rank >= 0; --rank) for (size_t suit = 0; suit < SUITS; ++suit) cards.push_back(make_card(rank, suit));//TODO: better order, also for tests allow just random order
 	for (size_t i = 0; i < DECK_SIZE; ++i) {
 		size_t card = cards[i];
 		auto &current_dp = dp[i];
@@ -873,18 +882,20 @@ void compiled_expression::run_dp() const {
 		std::cerr << "\n";
 	};
 	board_count matching_cou = 0;
-	for (size_t _ = 0; _ < 24; ++_) {
-		partial_board b;
-		const dp_value * pos = nullptr;
-		for (auto &[state, value] : dp.back()) {
-			if (*state.first.back() == 1) {
-				pos = &value;
-				matching_cou = value.count;
-			}
+	const dp_value * initial_pos = nullptr;
+	for (auto &[state, value] : dp.back()) {
+		if (*state.first.back() == 1) {
+			initial_pos = &value;
+			matching_cou = value.count;
 		}
+	}
+	std::vector<board> found_boards; //TODO: rename to avoid this issue with boards and found_boards;
+	for (size_t _ = 0; _ < count; ++_) {
+		const dp_value *pos = initial_pos;
+		partial_board b;
 		if (pos == nullptr) {
 			std::cerr << "Conditions are contradictive\n";
-			return;
+			return {0, {}};
 		}
 		for (int i = DECK_SIZE - 1; i >= 0; --i) {
 			size_t card = cards[i];
@@ -904,6 +915,8 @@ void compiled_expression::run_dp() const {
 			b.who[card] = who;
 		}
 		boards.push_back(b.finalize());
+		found_boards.push_back(b.finalize());
+		assert(eval(b.finalize()) == 1);
 		if (boards.size() == BLOCK_SIZE) {
 			dump();
 			boards.clear();
@@ -911,4 +924,5 @@ void compiled_expression::run_dp() const {
 	}
 	if (!boards.empty()) dump();
 	std::cerr << "(matching = " << matching_cou << ") / (all_bords_count = 53644737765488792839237440000) = " << matching_cou / (long double) 53644737765488792839237440000.0L;
+	return {matching_cou, found_boards};
 }

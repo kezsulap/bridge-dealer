@@ -14,6 +14,15 @@ const std::string SUITS_SYMBOLS[SUITS] = {"♠", "♥", "♦", "♣"};
 const int ACE = 12, KING = 11, QUEEN = 10, JACK = 9, TEN = 8;
 const char RANK_SYMBOLS[RANKS] = {'2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'};
 using board_count = __int128;
+const board_count TOTAL_COUNT = 635013559600 * (board_count) 8122425444 * (board_count) 10400600; //TODO: make this into anything "normal"
+inline board_count parse_int128(const std::string x) {
+	board_count ret = 0;
+	for (char c : x) {
+		assert(c >= '0' && c <= '9');
+		ret = ret * 10 + (c - '0');
+	}
+	return ret;
+}
 inline int char_to_rank(char x) {
 	for (size_t i = 0; i < RANKS; ++i) if (RANK_SYMBOLS[i] == x) return i;
 	assert(false);

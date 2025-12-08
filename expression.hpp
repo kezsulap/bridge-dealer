@@ -47,6 +47,11 @@ template <size_t length> std::array<value, length> operator*(std::array<value, l
 using player_weights = std::array<value, PLAYERS>;
 using suit_weights = std::array<value, SUITS>;
 using rank_weights = std::array<value, RANKS>;
+template <size_t N> std::array<value, N> make_singleton_weight(size_t which) {
+	std::array<value, N> ret;
+	for (size_t i = 0; i < N; ++i) ret[i] = (i == which ? 1 : 0);
+	return ret;
+};
 constexpr suit_weights ALL_SUITS = {1, 1, 1, 1};
 constexpr suit_weights SPADES_WEIGHTS = {1, 0, 0, 0};
 constexpr suit_weights HEARTS_WEIGHTS = {0, 1, 0, 0};
@@ -107,7 +112,7 @@ struct compiled_expression {
 	processed_deck_subset process_subset(const std::bitset<DECK_SIZE> &deck_subset) const; //TODO: this (maybe) belongs in a different file
 	// std::vector<std::optional<value>> partial_evaluate(const board &) const; //Returns either: nullopt if expression is no longer relevant or some value which makes everything equivalent
 	dp_state make_initial_state() const;
-	void run_dp() const;
+	std::pair<board_count, std::vector<board>> run_dp(size_t board_count = 0) const;
 	dp_state append_card(const dp_state &, size_t, size_t, const std::vector<processed_input_variable>&) const;
 };
 struct partial_expression_part {
