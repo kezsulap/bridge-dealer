@@ -17,6 +17,7 @@ struct card_player_matrix {
 		return result;
 	};
 	bool is_constant(); //TODO: is there any point in having this function (?)
+	auto operator<=>(const card_player_matrix&) const = default;
 };
 card_player_matrix operator+(card_player_matrix a, const card_player_matrix &b);
 card_player_matrix operator-(card_player_matrix a, const card_player_matrix &b);
@@ -132,6 +133,8 @@ struct expression_compiler {
 	std::pair<partial_expression_part::argument_type, size_t> run_recursive(const parsed_expression &/*subexpression*/);
 	compiled_expression finalize(std::pair<partial_expression_part::argument_type, size_t>);
 	compiled_expression compile(const parsed_expression &expression);
+	size_t add_used_constant(value x);
+	size_t add_input_variable(card_player_matrix);
 };
 std::ostream &operator<<(std::ostream &o, const card_player_matrix &);
 std::ostream &operator<<(std::ostream &o, const compiled_expression &);

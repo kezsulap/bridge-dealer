@@ -41,6 +41,17 @@ void _process_variable_test_impl(std::string description, int line, std::vector<
 	}
 }
 
+struct testcase {
+	std::string expression;
+	std::optional<board_count> count_matching;
+	std::vector<std::string> matching_boards;
+	std::vector<std::string> non_matching_boards;
+};
+
+std::vector <testcase> testcases = {
+	#include "test_cases.hpp"
+};
+
 int main() {
 	PROCESS_VARIABLE_TEST({}, 0, {}, {{{0, 0, 0, 0}, {0, 0}}});
 	PROCESS_VARIABLE_TEST({}, 5, {}, {{{0, 0, 0, 0}, {5, 5}}});
@@ -134,6 +145,21 @@ int main() {
 	ASSERT_EQUAL(expression_compiler::parse_suits(parse_expression("pointeds")), suit_weights({1, 0, 1, 0}));
 	ASSERT_EQUAL(expression_compiler::parse_suits(parse_expression("pointeds + spades")), suit_weights({2, 0, 1, 0}));
 	ASSERT_EQUAL(expression_compiler::parse_suits(parse_expression("pointeds - hearts")), suit_weights({1, -1, 1, 0}));
+
+	
+	for (auto [text_expression, count_matching, matching_boards, non_matching_boards] : testcases) {
+		std::cerr << "RUNNING " << text_expression << "\n";
+		compiled_expression expression = compile_expression(parse_expression(text_expression));
+		std::cerr << "COMPILED AS: \n" << expression << "\n";
+		for (auto &matching : matching_boards) {
+			assert(expression.eval(board(matching)) == 1);
+			std::cerr << GREEN << matching << " matches as expected\n" << CLEAR_COLOURS;
+		}
+		for (auto &non_matching : non_matching_boards) {
+			assert(expression.eval(board(non_matching)) == 0);
+			std::cerr << GREEN << non_matching << " doesn\'t match as expected\n" << CLEAR_COLOURS;
+		}
+	}
 	// ASSERT_EQUAL(expression_compiler::parse_suits(parse_expression("-hearts")), suit_weights({1, -1, 1, 0})); //TODO: fix
 	//TODO: more tests
 	//

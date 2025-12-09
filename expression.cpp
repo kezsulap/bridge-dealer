@@ -582,9 +582,7 @@ suit_weights expression_compiler::parse_suits(const parsed_expression &subexpres
 std::pair<partial_expression_part::argument_type, size_t> expression_compiler::run_recursive(const parsed_expression &subexpression) {
 	if (subexpression.is_token()) {
 		value x = parse_number(subexpression);
-		size_t this_index = used_constants.size();
-		used_constants.push_back(x);
-		return {partial_expression_part::argument_type::constant, this_index};
+		return {partial_expression_part::argument_type::constant, this->add_used_constant(x)};
 	}
 	else if (subexpression.is_function()) {
 		{
@@ -593,18 +591,14 @@ std::pair<partial_expression_part::argument_type, size_t> expression_compiler::r
 				assert(subexpression.sub_expressions.size() == 1u); //TODO: throw parse_error instead
 				player_weights players = parse_players(subexpression.sub_expressions[0]);
 				card_player_matrix this_weights = full_product(players, *suits, ALL_RANKS);
-				size_t this_index = input_variables.size();
-				input_variables.push_back(this_weights);
-				return {partial_expression_part::argument_type::input_variable, this_index};
+				return {partial_expression_part::argument_type::input_variable, this->add_input_variable(this_weights)};
 			}
 		}
 		if (subexpression.value == "hcp") { //TODO: case insensitive
 			assert(subexpression.sub_expressions.size() == 1u); //TODO: support hcp(player, suits)
 			player_weights players = parse_players(subexpression.sub_expressions[0]);
 			card_player_matrix this_weights = full_product(players, ALL_SUITS, HCP_WEIGHTS); //TODO: this block is repetitive, compress it somehow (function/macro/whatever is better)
-			size_t this_index = input_variables.size();
-			input_variables.push_back(this_weights);
-			return {partial_expression_part::argument_type::input_variable, this_index};
+			return {partial_expression_part::argument_type::input_variable, this->add_input_variable(this_weights)};
 		}
 		if (subexpression.value == "has") { //TODO: case insensitive
 			assert(subexpression.sub_expressions.size() == 3u); 
@@ -719,6 +713,26 @@ dp_state compiled_expression::make_initial_state() const {
 
 
 
+size_t expression_compiler::add_used_constant(value x) {
+	for (size_t i = 0; i < used_constants.size(); ++i) {
+		if (used_constants[i] == x) {
+			return i;
+		}
+	}
+	size_t new_index = used_constants.size();
+	used_constants.push_back(x);
+	return new_index;
+}
+size_t expression_compiler::add_input_variable(card_player_matrix x) {
+	for (size_t i = 0; i < input_variables.size(); ++i) {
+		if (input_variables[i] == x) {
+			return i;
+		}
+	}
+	size_t new_index = input_variables.size();
+	input_variables.push_back(x);
+	return new_index;
+}
 
 
 dp_state compiled_expression::append_card(const dp_state &state, size_t card, size_t player, const std::vector<processed_input_variable>&preprocessed_variables) const {
