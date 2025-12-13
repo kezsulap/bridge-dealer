@@ -2,6 +2,7 @@
 #include "output_operators.hpp"
 #include "types.hpp"
 #include <cstring>
+#include <limits>
 #include <optional>
 #include <sstream>
 #include <algorithm>
@@ -837,32 +838,36 @@ std::pair<board_count, std::vector<board> > compiled_expression::run_dp(const si
 	std::vector<std::map <dp_state, dp_value> > dp(DECK_SIZE + 1); //TODO: after a run is done I only need values, memory used to store keys is wasted, store values elsewhere (just in a vector (?))
 	dp[0][make_initial_state()] = {1, {}};
 	std::bitset<DECK_SIZE> still_undealt = full_deck();
-	// std::cerr << "dp = " << dp << "\n";
-	// size_t total_size = 0;
-	// total_size += dp.size();
 	std::vector <size_t> cards;
-	// for (size_t card = 0; card < DECK_SIZE; ++card) cards.push_back(card);
-	// for (size_t suit = 0; suit < SUITS; ++suit) for (size_t rank = 0; rank < RANKS; ++rank) cards.push_back(make_card(rank, suit));//TODO: better order, also for tests allow just random order
-	// for (size_t suit = 0; suit < SUITS; ++suit) for (int rank = RANKS - 1; rank >= 0; --rank) cards.push_back(make_card(rank, suit));//TODO: better order, also for tests allow just random order
-	for (int rank = RANKS - 1; rank >= 0; --rank) for (size_t suit = 0; suit < SUITS; ++suit) cards.push_back(make_card(rank, suit));//TODO: better order, also for tests allow just random order
 	for (size_t i = 0; i < DECK_SIZE; ++i) {
-		size_t card = cards[i];
-		auto &current_dp = dp[i];
-		auto &new_dp = dp[i + 1];
-		std::cerr << "Adding " << card_to_str(card) << "\n";
-		still_undealt[card] = 0;
-		std::vector<processed_input_variable> processed_variables;
-		for (auto &input_variable : input_variables) processed_variables.push_back(process_input_variable(input_variable, still_undealt));
-		for (auto &[state, count] : current_dp) {
-			for (size_t player = 0; player < PLAYERS; ++player) {
-				if (can_append_card(state, player)) {
-					new_dp[append_card(state, card, player, processed_variables)].append(count, player); //TODO: filter out boards with final output already decided to be something
+		size_t limit = std::numeric_limits<size_t>::max();
+		size_t best_card = std::numeric_limits<size_t>::max();
+		auto append_advance_dp = [&](size_t card) -> void {
+			auto &current_dp = dp[i];
+			std::map<dp_state, dp_value> new_dp;
+			std::bitset<DECK_SIZE> new_undealt = still_undealt;
+			new_undealt[card] = 0;
+			std::vector<processed_input_variable> processed_variables;
+			for (auto &input_variable : input_variables) processed_variables.push_back(process_input_variable(input_variable, new_undealt));
+			for (auto &[state, count] : current_dp) {
+				for (size_t player = 0; player < PLAYERS; ++player) {
+					if (can_append_card(state, player)) {
+						new_dp[append_card(state, card, player, processed_variables)].append(count, player); //TODO: filter out boards with final output already decided to be something
+						if (new_dp.size() >= limit) return;
+					}
 				}
 			}
-		}
-		std::cerr << "produced dp.size() = " << new_dp.size() << "\n";
-		// total_size += currentdp.size();
-		// std::cerr << "dp.size() = " << dp.size() << "\n";
+			assert(new_dp.size() <= limit);
+			dp[i + 1] = std::move(new_dp);
+			limit = dp[i + 1].size();
+			best_card = card;
+		};
+		for (size_t card = 0; card < DECK_SIZE; ++card)
+			if (still_undealt[card])
+				append_advance_dp(card);
+		cards.push_back(best_card);
+		still_undealt[best_card] = false;
+		std::cerr << "Chose to add " << card_to_str(best_card) << " leading to dp.size() = " << dp[i + 1].size() << "\n";
 	}
 	// std::cerr << "dp = " << dp << "\n";
 	// std::cerr << "total_size = " << total_size << "\n";
