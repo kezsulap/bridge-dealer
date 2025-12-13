@@ -833,12 +833,38 @@ i128 uniform_i128(i128 a, i128 b, std::mt19937_64 &rng) {
     }
 }
 
+std::vector<std::vector<size_t> > compiled_expression::partition_deck_into_equivalence_classes() const {
+	auto equivalent = [&](size_t card_1, size_t card_2) {
+		for (auto &input_variable : this->input_variables)
+			for (size_t player = 0; player < PLAYERS; ++player)
+				if (input_variable.coef[card_1][player] != input_variable.coef[card_2][player])
+					return false;
+		return true;
+	};
+	std::vector<std::vector<size_t> > partition;
+	for (size_t card = 0; card < DECK_SIZE; ++card) {
+		bool found = false;
+		for (auto &x : partition) {
+			if (equivalent(card, x.back())) {
+				found = true;
+				x.push_back(card);
+			}
+		}
+		if (!found) partition.emplace_back(1, card);
+	}
+	return partition;
+}
 
 std::pair<board_count, std::vector<board> > compiled_expression::run_dp(const size_t count) const {
 	std::vector<std::map <dp_state, dp_value> > dp(DECK_SIZE + 1); //TODO: after a run is done I only need values, memory used to store keys is wasted, store values elsewhere (just in a vector (?))
 	dp[0][make_initial_state()] = {1, {}};
 	std::bitset<DECK_SIZE> still_undealt = full_deck();
 	std::vector <size_t> cards;
+	std::vector <std::vector <size_t> > equivalence_classes = partition_deck_into_equivalence_classes();
+	for (auto &x : equivalence_classes) {
+		for (size_t card : x) std::cerr << card_to_str(card) << " ";
+		std::cerr << "\n";
+	}
 	for (size_t i = 0; i < DECK_SIZE; ++i) {
 		size_t limit = std::numeric_limits<size_t>::max();
 		size_t best_card = std::numeric_limits<size_t>::max();
@@ -857,17 +883,28 @@ std::pair<board_count, std::vector<board> > compiled_expression::run_dp(const si
 					}
 				}
 			}
-			assert(new_dp.size() <= limit);
+			assert(new_dp.size() < limit);
 			dp[i + 1] = std::move(new_dp);
 			limit = dp[i + 1].size();
 			best_card = card;
 		};
-		for (size_t card = 0; card < DECK_SIZE; ++card)
-			if (still_undealt[card])
-				append_advance_dp(card);
+		for (auto &equivalence_class : equivalence_classes) {
+			if (!equivalence_class.empty()) {
+				append_advance_dp(equivalence_class.back());
+			}
+		}
 		cards.push_back(best_card);
 		still_undealt[best_card] = false;
 		std::cerr << "Chose to add " << card_to_str(best_card) << " leading to dp.size() = " << dp[i + 1].size() << "\n";
+		bool found = false;
+		for (auto &equivalence_class : equivalence_classes) {
+			if (!equivalence_class.empty() && equivalence_class.back() == best_card) {
+				equivalence_class.pop_back();
+				assert(!found);
+				found = true;
+			}
+		}
+		found = true;
 	}
 	// std::cerr << "dp = " << dp << "\n";
 	// std::cerr << "total_size = " << total_size << "\n";

@@ -13,11 +13,12 @@ int main(int argc, char **argv) {
 		std::cerr << "Usage: " << argv[0] << " count expression\n";
 		return 1;
 	}
+	std::cerr << "processing: " << argv[2] << "\n";
 	int a = atoi(argv[1]);
 	try {
 		compiled_expression expression = compile_expression(parse_expression(argv[2]));
-	// std::cout << expression << "\n";
-		expression.run_dp(24);
+		std::cout << expression << "\n";
+		expression.run_dp(a);
 	}
 	catch (parse_error e) {
 		std::cerr << e.content << "\n";

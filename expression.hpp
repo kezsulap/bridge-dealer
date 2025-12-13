@@ -115,6 +115,7 @@ struct compiled_expression {
 	dp_state make_initial_state() const;
 	std::pair<board_count, std::vector<board>> run_dp(size_t board_count = 0) const;
 	dp_state append_card(const dp_state &, size_t, size_t, const std::vector<processed_input_variable>&) const;
+	std::vector<std::vector<size_t> > partition_deck_into_equivalence_classes() const;
 };
 struct partial_expression_part {
 	enum class argument_type {constant, input_variable, other_expression}; //TODO: this doesn't belong here, put it elsewhere
