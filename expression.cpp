@@ -595,9 +595,10 @@ std::pair<partial_expression_part::argument_type, size_t> expression_compiler::r
 			}
 		}
 		if (subexpression.value == "hcp") { //TODO: case insensitive
-			assert(subexpression.sub_expressions.size() == 1u); //TODO: support hcp(player, suits)
+			assert(subexpression.sub_expressions.size() == 1u || subexpression.sub_expressions.size() == 2u); //TODO: support hcp(player, suits)
+			suit_weights suits = subexpression.sub_expressions.size() == 2u ? parse_suits(subexpression.sub_expressions[1]) : ALL_SUITS;
 			player_weights players = parse_players(subexpression.sub_expressions[0]);
-			card_player_matrix this_weights = full_product(players, ALL_SUITS, HCP_WEIGHTS); //TODO: this block is repetitive, compress it somehow (function/macro/whatever is better)
+			card_player_matrix this_weights = full_product(players, suits, HCP_WEIGHTS); //TODO: this block is repetitive, compress it somehow (function/macro/whatever is better)
 			return {partial_expression_part::argument_type::input_variable, this->add_input_variable(this_weights)};
 		}
 		if (subexpression.value == "has") { //TODO: case insensitive
