@@ -931,8 +931,8 @@ std::pair<board_count, std::vector<board> > compiled_expression::run_dp(const si
 				std::cerr << "| ";
 				indices[i]++;
 			}
-			std::cerr << "\n";
 			if (!any) break;
+			std::cerr << "\n";
 		}
 		for (int _ = 0; _ < 245; ++_)
 			std::cerr << "-";
@@ -947,6 +947,11 @@ std::pair<board_count, std::vector<board> > compiled_expression::run_dp(const si
 		}
 	}
 	std::vector<board> found_boards; //TODO: rename to avoid this issue with boards and found_boards;
+	if (count) {
+		for (int _ = 0; _ < 245; ++_)
+			std::cerr << "-";
+		std::cerr << "\n";
+	}
 	for (size_t _ = 0; _ < count; ++_) {
 		const dp_value *pos = initial_pos;
 		partial_board b;
@@ -980,6 +985,6 @@ std::pair<board_count, std::vector<board> > compiled_expression::run_dp(const si
 		}
 	}
 	if (!boards.empty()) dump();
-	std::cerr << "(matching = " << matching_cou << ") / (all_bords_count = 53644737765488792839237440000) = " << matching_cou / (long double) 53644737765488792839237440000.0L;
+	std::cerr << "(matching = " << matching_cou << ") / (all_bords_count = 53644737765488792839237440000) = " << matching_cou / (long double) 53644737765488792839237440000.0L << std::endl;
 	return {matching_cou, found_boards};
 }
