@@ -341,8 +341,11 @@ int main() {
 	ASSERT_THROWS_WITH_CONTENT(parse_error, parse_expression("()"), content, "Missing expression");
 	ASSERT_THROWS_WITH_CONTENT(parse_error, parse_expression("$"), content, "Invalid identifier: $");
 	//TODO: make below error messages more clear
-	ASSERT_THROWS_WITH_CONTENT(parse_error, parse_expression("1 $ 2"), content, "Can't parse expression");
-	ASSERT_THROWS_WITH_CONTENT(parse_error, parse_expression("1 2"), content, "Can't parse expression");
-	ASSERT_THROWS_WITH_CONTENT(parse_error, parse_expression("any 5332"), content, "Can't parse expression");
+	ASSERT_THROWS_WITH_CONTENT(parse_error, parse_expression("1 $ 2"), content, "Can't parse expression at 1 $ 2");
+	ASSERT_THROWS_WITH_CONTENT(parse_error, parse_expression("1 2"), content, "Can't parse expression at 1 2");
+	ASSERT_THROWS_WITH_CONTENT(parse_error, parse_expression("any 5332"), content, "Can't parse expression at any 5332");
 	ASSERT_THROWS_WITH_CONTENT(parse_error, parse_expression("**"), content, "Missing expression");
+	ASSERT_THROWS_WITH_CONTENT(parse_error, parse_expression("*"), content, "Missing expression");
+	ASSERT_THROWS_WITH_CONTENT(parse_error, parse_expression("1*"), content, "Missing expression");
+	ASSERT_THROWS_WITH_CONTENT(parse_error, parse_expression("*2"), content, "Missing expression");
 }

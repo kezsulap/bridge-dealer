@@ -4,6 +4,7 @@
 #include <stack>
 #include <string>
 #include <vector>
+#include <sstream>
 /*
 variable make_card(int suit, int rank, int player) {
 	variable res;
@@ -29,14 +30,16 @@ variable make_hcp(int player, int suit = -1) {
 variable make_rank(int rank, int player) {
 	
 }
-string join(const string &separator, const std::vector <string> &rest) {
-	stringstream out;
+*/
+std::string join(const std::string &separator, const std::vector <std::string> &rest) {
+	std::stringstream out;
 	for (size_t i = 0; i < rest.size(); ++i) {
 		if (i) out << separator;
 		out << rest[i];
 	}
 	return out.str();
 }
+/*
 //Remember to support hcp(north + south), hcp(NS), hearts(NS), hcp(north, clubs + diamonds)
 //TODO: What to do with shape(north, any 5332 + 55xx - any 0xxx) etc?
 variable make_constant(value x) {
@@ -255,7 +258,7 @@ parsed_expression parse_tokenized_expression(const std::vector <std::string> &to
 		if (is_in(*begin, {"+", "-", "!"})) {
 			return parsed_expression{*begin, {rec_parse(begin + 1, end)}};
 		}
-		throw parse_error{"Can't parse expression"};
+		throw parse_error{"Can't parse expression at " + join(" ", std::vector<std::string>(begin, end))};
 #undef rec_parse
 	};
 	return rec_parse_(tokens.begin(), tokens.end(), rec_parse_);
