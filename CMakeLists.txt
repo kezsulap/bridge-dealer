@@ -6,4 +6,5 @@ add_executable(parser_test parser.cpp unit-tests/parser-test.cpp unit-tests/test
 add_executable(expression_test expression.cpp board.cpp ranges.cpp parser.cpp unit-tests/expression-test.cpp unit-tests/test_utils.cpp)
 add_executable(generate_test unit-tests/generate-test.cpp board.cpp expression.cpp ranges.cpp parser.cpp)
 add_executable(dp_test unit-tests/dp-test.cpp unit-tests/test_utils.cpp expression.cpp ranges.cpp board.cpp parser.cpp)
+add_executable(shapes_set_test unit-tests/shapes_set_test.cpp unit-tests/test_utils.cpp shapes_set.cpp)
 add_executable(main main.cpp board.cpp expression.cpp parser.cpp ranges.cpp)
