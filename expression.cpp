@@ -707,7 +707,7 @@ dp_state compiled_expression::make_initial_state() const {
 	for (size_t i = 0; i < used_constants.size(); ++i) ret[i] = std::nullopt;
 	for (size_t i = 0; i < input_variables.size(); ++i) ret[i + used_constants.size()] = relevant[i + used_constants.size()] ? std::optional<value>(input_variables[i].offset) : std::nullopt;
 	for (size_t i = used_constants.size() + input_variables.size(); i < values.size(); ++i) {
-		if (relevant[i] && is_singleton(values[i])) ret[i] = values[i].first; //TODO: wrap this get_first into any member function (or just extract_only_value which raises if not singleton (?))
+		if (relevant[i] && is_singleton(values[i])) ret[i] = values[i].min; //TODO: wrap this get_first into any member function (or just extract_only_value which raises if not singleton (?))
 		else ret[i] = std::nullopt;
 	}
 	return {ret, std::array<value, PLAYERS>()};
@@ -780,7 +780,7 @@ dp_state compiled_expression::append_card(const dp_state &state, size_t card, si
 		if (!relevant[i + used_constants.size()]) ret[i + used_constants.size()] = std::nullopt;
 	}
 	for (size_t i = used_constants.size() + input_variables.size(); i < values.size(); ++i) {
-		if (relevant[i] && is_singleton(values[i])) ret[i] = values[i].first; //TODO: wrap this get_first into any member function (or just extract_only_value which raises if not singleton (?))
+		if (relevant[i] && is_singleton(values[i])) ret[i] = values[i].min; //TODO: wrap this get_first into any member function (or just extract_only_value which raises if not singleton (?))
 		else ret[i] = std::nullopt;
 	}
 	// std::cerr << "Try append to " << state << ", give " << card_to_str(card) << " to " << PLAYERS_STR[player] << ", got " << ret << ", " << new_count << "\n";

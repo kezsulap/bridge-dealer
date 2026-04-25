@@ -68,8 +68,8 @@ void run_testcase(std::vector<std::tuple<int, int, int, int> > shapes_list_inclu
 							}
 						}
 						range class_result = set.evaluate(range(s_low, s_high), range(h_low, h_high), range(d_low, d_high), range(c_low, c_high));
-						ASSERT_EQUAL_SILENT(any, class_result.second == 1);
-						ASSERT_EQUAL_SILENT(all, class_result.first == 1);
+						ASSERT_EQUAL_SILENT(any, class_result.max == 1);
+						ASSERT_EQUAL_SILENT(all, class_result.min == 1);
 					}
 				}
 			}

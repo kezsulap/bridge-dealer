@@ -77,18 +77,18 @@ void shapes_set::finalize() {
 }
 range shapes_set::evaluate(range s, range h, range d, range c) const {
 	assert(this->finalized);
-	assert(s.first >= 0 && s.second <= MAX_LENGTH);
-	assert(h.first >= 0 && h.second <= MAX_LENGTH);
-	assert(d.first >= 0 && d.second <= MAX_LENGTH);
-	assert(c.first >= 0 && c.second <= MAX_LENGTH);
+	assert(s.min >= 0 && s.max <= MAX_LENGTH);
+	assert(h.min >= 0 && h.max <= MAX_LENGTH);
+	assert(d.min >= 0 && d.max <= MAX_LENGTH);
+	assert(c.min >= 0 && c.max <= MAX_LENGTH);
 	int valid_in = 0, invalid_in = 0;
 	for (int s_index = 0; s_index < 2; ++s_index) {
 		for (int h_index = 0; h_index < 2; ++h_index) {
 			for (int d_index = 0; d_index < 2; ++d_index) {
 				for (int c_index = 0; c_index < 2; ++c_index) {
 					int sign = (s_index + h_index + d_index + c_index) % 2 ? -1 : 1;
-					valid_in += valid_below[s_index ? s.second + 1 : s.first][h_index ? h.second + 1 : h.first][d_index ? d.second + 1 : d.first][c_index ? c.second + 1 : c.first] * sign;
-					invalid_in += invalid_below[s_index ? s.second + 1 : s.first][h_index ? h.second + 1 : h.first][d_index ? d.second + 1 : d.first][c_index ? c.second + 1 : c.first] * sign;
+					valid_in += valid_below[s_index ? s.max + 1 : s.min][h_index ? h.max + 1 : h.min][d_index ? d.max + 1 : d.min][c_index ? c.max + 1 : c.min] * sign;
+					invalid_in += invalid_below[s_index ? s.max + 1 : s.min][h_index ? h.max + 1 : h.min][d_index ? d.max + 1 : d.min][c_index ? c.max + 1 : c.min] * sign;
 				}
 			}
 		}

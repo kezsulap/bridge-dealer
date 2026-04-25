@@ -3,7 +3,7 @@
 #include <type_traits>
 #include <algorithm>
 std::ostream &operator<<(std::ostream & o, range r) {
-	return o << "[" << r.first << ", " << r.second << "]";
+	return o << "[" << r.min << ", " << r.max << "]";
 }
 value safe_mul(value a, value b) {
 	static_assert(std::is_same<value, int>::value, "Update function to work with current value type");
@@ -41,51 +41,51 @@ range singleton(value x) {
 	return {x, x};
 }
 range set_union(range a, range b) {
-	return {std::min(a.first, b.first), std::max(a.second, b.second)};
+	return {std::min(a.min, b.min), std::max(a.max, b.max)};
 }
 range operator+(range a, range b) {
-	return {safe_add(a.first, b.first), safe_add(a.second, b.second)};
+	return {safe_add(a.min, b.min), safe_add(a.max, b.max)};
 }
 range operator-(range a, range b) {
-	return {safe_sub(a.first, b.second), safe_sub(a.second, b.first)};
+	return {safe_sub(a.min, b.max), safe_sub(a.max, b.min)};
 }
 range operator*(range a, range b) {
-	value x[] = {safe_mul(a.first, b.first), safe_mul(a.second, b.first), safe_mul(a.first, b.second), safe_mul(a.second, b.second)}; //TODO: can this be made more efficient (?)
+	value x[] = {safe_mul(a.min, b.min), safe_mul(a.max, b.min), safe_mul(a.min, b.max), safe_mul(a.max, b.max)}; //TODO: can this be made more efficient (?)
 	return {*std::min_element(x, x + 4), *std::max_element(x, x + 4)};
 }
 range operator/(range a, range b) {
 	if (b == range{0, 0})
 		throw division_by_zero(); //TODO: return some sort of empty interval (?)
-	if (b.first < 0 && b.second > 0) {
-		if (a.first == std::numeric_limits<value>::min()) {
+	if (b.min < 0 && b.max > 0) {
+		if (a.min == std::numeric_limits<value>::min()) {
 			return {std::numeric_limits<int>::min(), std::numeric_limits<int>::max()};
 		}
-		value t =  std::max(abs(a.first), abs(a.second));
+		value t = std::max(abs(a.min), abs(a.max));
 		return {-t, t};
 	}
-	if (b.first == 0) b.first = 1;
-	if (b.second == 0) b.second = -1;
-	value x[] = {safe_div(a.first, b.first), safe_div(a.second, b.first), safe_div(a.first, b.second), safe_div(a.second, b.second)};
+	if (b.min == 0) b.min = 1;
+	if (b.max == 0) b.max = -1;
+	value x[] = {safe_div(a.min, b.min), safe_div(a.max, b.min), safe_div(a.min, b.max), safe_div(a.max, b.max)};
 	return {*std::min_element(x, x + 4), *std::max_element(x, x + 4)};
 }
 range operator%(range a, range b) {
 	if (b == range{0, 0})
 		throw division_by_zero();
-	range b2 = {b.first <= 0 && b.second >= 0 ? 1 : std::min(std::abs(b.first), std::abs(b.second)), std::max(std::abs(b.first), std::abs(b.second))}; //Watch out for abs(INT_MIN)
-	if (a.first / b2.second == a.second / b2.first) {
-		value c = a.first / b2.second;
-		return {a.first - c * b2.second, a.second - c * b2.first};
+	range b2 = {b.min <= 0 && b.max >= 0 ? 1 : std::min(std::abs(b.min), std::abs(b.max)), std::max(std::abs(b.min), std::abs(b.max))}; //Watch out for abs(INT_MIN)
+	if (a.min / b2.max == a.max / b2.min) {
+		value c = a.min / b2.max;
+		return {a.min - c * b2.max, a.max - c * b2.min};
 	}
-	return {0, b2.second - 1};
+	return {0, b2.max - 1};
 }
 range take_max(range a, range b) {
-	return {std::max(a.first, b.first), std::max(a.second, b.second)};
+	return {std::max(a.min, b.min), std::max(a.max, b.max)};
 }
 range take_min(range a, range b) {
-	return {std::min(a.first, b.first), std::min(a.second, b.second)};
+	return {std::min(a.min, b.min), std::min(a.max, b.max)};
 }
 bool can_zero(range a) {
-	return a.first <= 0 && a.second >= 0;
+	return a.min <= 0 && a.max >= 0;
 }
 bool can_nonzero(range a) {
 	return a != range{0, 0};
@@ -97,10 +97,10 @@ range is_nonzero(range a) { // Cast to bool (?)
 	return {!can_zero(a), can_nonzero(a)};
 }
 range less_than(range a, range b) {
-	return {a.second < b.first, a.first < b.second};
+	return {a.max < b.min, a.min < b.max};
 }
 range less_equal(range a, range b) {
-	return {a.second <= b.first, a.first <= b.second};
+	return {a.max <= b.min, a.min <= b.max};
 }
 range greater_than(range a, range b) {
 	return less_than(b, a);
@@ -109,25 +109,25 @@ range greater_equal(range a, range b) {
 	return less_equal(b, a);
 }
 range equal(range a, range b) {
-	return {a.first == a.second && a.first == b.first && a.first == b.second, a.first <= b.second && b.first <= a.second};
+	return {a.min == a.max && a.min == b.min && a.min == b.max, a.min <= b.max && b.min <= a.max};
 }
 range not_equal(range a, range b) {
-	return {a.first > b.second || b.first > a.second, a.first != a.second || a.first != b.first || a.first != b.second};	
+	return {a.min > b.max || b.min > a.max, a.min != a.max || a.min != b.min || a.min != b.max};	
 }
 range is_positive(range a) {
-	if (a.first > 0) return {1, 1};
-	if (a.second <= 0) return {0, 0};
+	if (a.min > 0) return {1, 1};
+	if (a.max <= 0) return {0, 0};
 	return {0, 1};
 }
 range is_nonnegative(range a) {
-	if (a.first >= 0) return {1, 1};
-	if (a.second < 0) return {0, 0};
+	if (a.min >= 0) return {1, 1};
+	if (a.max < 0) return {0, 0};
 	return {0, 1};
 }
 range ternary(range a, range b, range c) { //TODO: make it so a is required to be a boolean and use cast to bool (if needed) when compiling an expression
-	range first = is_nonzero(a);
-	if (first == range{1, 1}) return b;
-	if (first == range{0, 0}) return c;
+	range min = is_nonzero(a);
+	if (min == range{1, 1}) return b;
+	if (min == range{0, 0}) return c;
 	return set_union(b, c);
 }
 range logical_and(range a, range b) {
@@ -152,22 +152,22 @@ range take_kth(const std::vector<range> &ranges, size_t k) {
 	return {begins[k], ends[k]};
 }
 bool is_singleton(range x) {
-	return x.first == x.second;
+	return x.min == x.max;
 }
 std::tuple<std::optional<value>, std::optional<value>> replace_irrelevant_min(range a, range b) {
-	if (a.second <= b.first) {
+	if (a.max <= b.min) {
 		return {std::nullopt, std::numeric_limits<value>::max()};
 	}
-	if (b.second <= a.first) {
+	if (b.max <= a.min) {
 		return {std::numeric_limits<value>::max(), std::nullopt};
 	}
 	return {std::nullopt, std::nullopt};
 }
 std::tuple<std::optional<value>, std::optional<value>> replace_irrelevant_max(range a, range b) {
-	if (a.second <= b.first) {
+	if (a.max <= b.min) {
 		return {std::numeric_limits<value>::min(), std::nullopt};
 	}
-	if (b.second <= a.first) {
+	if (b.max <= a.min) {
 		return {std::nullopt, std::numeric_limits<value>::min()};
 	}
 	return {std::nullopt, std::nullopt};

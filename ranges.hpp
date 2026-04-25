@@ -5,7 +5,14 @@
 #include <vector>
 #include <optional>
 struct division_by_zero {};
-using range = std::pair <value, value>;
+struct range {
+	value min, max;
+	range(int _min, int _max): min(_min), max(_max) {
+		assert(_min <= _max);
+	}
+	range(): min(0), max(0){}
+	bool operator==(const range &oth) const = default;
+};
 range singleton(value x);
 range set_union(range a, range b);
 range operator+(range a, range b);

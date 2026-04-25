@@ -4,7 +4,7 @@
 #define ASSERT_RANGE_SUBSET(a, b, c) assert_range_subset_impl(a, b, c, #a, #b, #c)
 #include "../ranges.hpp"
 void assert_range_subset_impl(range a, range b, range c, std::string a_name, std::string b_name, std::string c_name) {
-	if (a.first >= b.first && b.first >= c.first && a.second <= b.second && b.second <= c.second) {
+	if (a.min >= b.min && b.min >= c.min && a.max <= b.max && b.max <= c.max) {
 		std::cout << GREEN << "PASSED: " << a_name << " <= " << b_name << " <= " << c_name << CLEAR_COLOURS << std::endl;
 	}
 	else {
@@ -60,7 +60,7 @@ int main() {
 	ASSERT_EQUAL(range(200, 500) / range(-10, -1), range(-500, -20));
 	ASSERT_EQUAL(range(200, 500) / range(-10, 0), range(-500, -20));
 	ASSERT_EQUAL(range(-100, 150) / range(2, 5), range(-50, 75));
-	ASSERT_EQUAL(range(-100, 150) / range(-2, -5), range(-75, 50));
+	ASSERT_EQUAL(range(-100, 150) / range(-5, -2), range(-75, 50));
 	ASSERT_EQUAL(singleton(0) / range(INT_MIN, INT_MAX), singleton(0));
 	ASSERT_EQUAL(range(INT_MIN, INT_MAX) / singleton(-1), range(-INT_MAX, INT_MAX));
 	ASSERT_EQUAL(range(INT_MIN, INT_MAX) / range(INT_MIN, INT_MAX), range(INT_MIN, INT_MAX));
