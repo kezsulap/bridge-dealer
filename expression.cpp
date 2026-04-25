@@ -875,10 +875,10 @@ std::pair<board_count, std::vector<board> > compiled_expression::run_dp(const si
 			new_undealt[card] = 0;
 			std::vector<processed_input_variable> processed_variables;
 			for (auto &input_variable : input_variables) processed_variables.push_back(process_input_variable(input_variable, new_undealt));
-			for (auto &[state, count] : current_dp) {
+			for (auto &[state, cou] : current_dp) {
 				for (size_t player = 0; player < PLAYERS; ++player) {
 					if (can_append_card(state, player)) {
-						new_dp[append_card(state, card, player, processed_variables)].append(count, player); //TODO: filter out boards with final output already decided to be something
+						new_dp[append_card(state, card, player, processed_variables)].append(cou, player); //TODO: filter out boards with final output already decided to be something
 						if (new_dp.size() >= limit) return;
 					}
 				}
@@ -940,10 +940,10 @@ std::pair<board_count, std::vector<board> > compiled_expression::run_dp(const si
 	};
 	board_count matching_cou = 0;
 	const dp_value * initial_pos = nullptr;
-	for (auto &[state, value] : dp.back()) {
+	for (auto &[state, val] : dp.back()) {
 		if (*state.first.back() == 1) {
-			initial_pos = &value;
-			matching_cou = value.count;
+			initial_pos = &val;
+			matching_cou = val.count;
 		}
 	}
 	std::vector<board> found_boards; //TODO: rename to avoid this issue with boards and found_boards;

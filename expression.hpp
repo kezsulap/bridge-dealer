@@ -113,7 +113,7 @@ struct compiled_expression {
 	processed_deck_subset process_subset(const std::bitset<DECK_SIZE> &deck_subset) const; //TODO: this (maybe) belongs in a different file
 	// std::vector<std::optional<value>> partial_evaluate(const board &) const; //Returns either: nullopt if expression is no longer relevant or some value which makes everything equivalent
 	dp_state make_initial_state() const;
-	std::pair<board_count, std::vector<board>> run_dp(size_t board_count = 0) const;
+	std::pair<board_count, std::vector<board>> run_dp(size_t count = 0) const;
 	dp_state append_card(const dp_state &, size_t, size_t, const std::vector<processed_input_variable>&) const;
 	std::vector<std::vector<size_t> > partition_deck_into_equivalence_classes() const;
 };
