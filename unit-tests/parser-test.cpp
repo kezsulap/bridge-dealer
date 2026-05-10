@@ -329,6 +329,105 @@ int main() {
 					}},
 				}
 			}));
+	ASSERT_EQUAL(parse_expression("shape(north, 5332 | 5422)"), (
+		parsed_expression{
+			"shape", {
+				parsed_expression{"north", {}},
+				parsed_expression{"|", {
+						parsed_expression{"5332", {}},
+						parsed_expression{"5422", {}},
+					}
+				}
+			}
+		}
+	));
+	ASSERT_EQUAL(parse_expression("shape(north, 5332 ! 5422)"), (
+		parsed_expression{
+			"shape", {
+				parsed_expression{"north", {}},
+				parsed_expression{"!", {
+						parsed_expression{"5332", {}},
+						parsed_expression{"5422", {}},
+					}
+				}
+			}
+		}
+	));
+	ASSERT_EQUAL(parse_expression("shape(north, 5332 | 5422 ! 2137)"), (
+		parsed_expression{
+			"shape", {
+				parsed_expression{"north", {}},
+				parsed_expression{"|", {
+						parsed_expression{"5332", {}},
+						parsed_expression{"!", {
+								parsed_expression{"5422", {}},
+								parsed_expression{"2137", {}},
+							}
+						}
+					}
+				}
+			}
+		}
+	));
+	ASSERT_EQUAL(parse_expression("shape(north, 5332 ! 5422 | 2137)"), (
+		parsed_expression{
+			"shape", {
+				parsed_expression{"north", {}},
+				parsed_expression{"!", {
+						parsed_expression{"5332", {}},
+						parsed_expression{"|", {
+								parsed_expression{"5422", {}},
+								parsed_expression{"2137", {}},
+							}
+						}
+					}
+				}
+			}
+		}
+	));
+	ASSERT_EQUAL(parse_expression("shape(north, (5332 ! 5422) | 2137)"), (
+		parsed_expression{
+			"shape", {
+				parsed_expression{"north", {}},
+				parsed_expression{"|", {
+						parsed_expression{"!", {
+								parsed_expression{"5332", {}},
+								parsed_expression{"5422", {}},
+							}
+						},
+						parsed_expression{"2137", {}}
+					}
+				}
+			}
+		}
+	));
+	ASSERT_EQUAL(parse_expression("shape(north, 5332 ! (5422 | 2137))"), (
+		parsed_expression{
+			"shape", {
+				parsed_expression{"north", {}},
+				parsed_expression{"!", {
+						parsed_expression{"5332", {}},
+						parsed_expression{"|", {
+								parsed_expression{"5422", {}},
+								parsed_expression{"2137", {}},
+							}
+						}
+					}
+				}
+			}
+		}
+	));
+	ASSERT_EQUAL(parse_expression("shape(north, any 5332)"), (
+		parsed_expression{
+			"shape", {
+				parsed_expression{"north", {}},
+				parsed_expression{"any", {
+						parsed_expression{"5332", {}},
+					}
+				}
+			}
+		}
+	));
 	ASSERT_THROWS_WITH_CONTENT(parse_error, parse_expression("(("), content, "Mismatched parenthesis");
 	ASSERT_THROWS_WITH_CONTENT(parse_error, parse_expression("("), content, "Mismatched parenthesis");
 	ASSERT_THROWS_WITH_CONTENT(parse_error, parse_expression(")"), content, "Mismatched parenthesis");

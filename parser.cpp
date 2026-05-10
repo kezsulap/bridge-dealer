@@ -1,6 +1,7 @@
 #include "parser.hpp"
 #include "output_operators.hpp"
 #include <cassert>
+#include <cctype>
 #include <stack>
 #include <string>
 #include <vector>
@@ -122,14 +123,47 @@ bool parsed_expression::operator!=(const parsed_expression &oth) const {
 	return !(*this == oth);
 }
 
+//Shape syntax: any series of tokens (whether space separated or not, whatever xd) including digits, x, [, ], ., +, -, will be considered a shape
+//any 5332 | 6+M4xx !2614
+
+bool is_valid_character_within_shapelist(char x) {
+	return std::isdigit(x) || x == 'm' || x == 'M' || x == '+' || x == '-' || x == '[' || x == ']';
+}
 
 parsed_expression parse_tokenized_expression(const std::vector <std::string> &tokens) {
 	assert(!tokens.empty());
 	using iterator = std::vector<std::string>::const_iterator;
-	auto rec_parse_ = [](iterator begin, iterator end, auto rec_parse) -> parsed_expression {
-		// std::cerr << "rec_parse: ";
-		// for (iterator it = begin; it != end; ++it) std::cerr << *it << "   ";
-		// std::cerr << "\n";
+	auto parse_shapelist_rec = [](iterator begin, iterator end, auto parse_shapelist) -> parsed_expression {
+		assert(begin != end);
+		iterator split_point = end;
+		int parenthesis_depth = 0;
+		for (auto it = begin; it != end; ++it) {
+			if (*it == "(") parenthesis_depth++;
+			else if (*it == ")") parenthesis_depth--;
+			if (parenthesis_depth == 0 && (*it == "|" || *it == "!") && split_point == end) {
+				split_point = it;
+			}
+		}
+		assert(parenthesis_depth == 0); //Parenthesis depths should already be checked within rec_parse
+		if (split_point != end) {
+			return parsed_expression{*split_point, {parse_shapelist(begin, split_point, parse_shapelist), parse_shapelist(split_point + 1, end, parse_shapelist)}};
+		}
+		if (*begin == "any") {
+			if (begin + 1 == end) throw parse_error{"missing shape after any"};
+			return parsed_expression{"any", {parse_shapelist(begin + 1, end, parse_shapelist)}};
+		}
+		if (*begin == "(" && *(end - 1) == ")") return parse_shapelist(begin + 1, end - 1, parse_shapelist); //TODO: what will happen with (x)(y)?
+		std::stringstream s;
+		for (iterator it = begin; it != end; ++it) {
+			for (char c : *it) if (!is_valid_character_within_shapelist(c)) throw parse_error{"Invalid character " + std::string(1, c) + " within shape list"};
+			s << *it;
+		}
+		return parsed_expression{s.str(), {}};
+	};
+	auto parse_shapelist = [parse_shapelist_rec](iterator begin, iterator end) -> parsed_expression {
+		return parse_shapelist_rec(begin, end, parse_shapelist_rec);
+	};
+	auto rec_parse_ = [&parse_shapelist](iterator begin, iterator end, auto rec_parse) -> parsed_expression {
 		if (begin == end) throw parse_error{"Missing expression"};
 		assert(begin < end);
 #define rec_parse(...) rec_parse(__VA_ARGS__, rec_parse)
@@ -244,9 +278,13 @@ parsed_expression parse_tokenized_expression(const std::vector <std::string> &to
 					commas.push_back(it);
 				}
 			}
-			assert(depth == 0);
+			assert(depth == 0); // TODO: does this indeed catch a bug and not invalid input?, If so add some comment or anything
 			std::vector <parsed_expression> subexpressions;
-			if (commas.empty()) subexpressions.push_back(rec_parse(begin + 2, end - 1));
+			if (*begin == "shape") {
+				if (commas.size() != 1) throw parse_error{"function shape expecting 2 parameters, got" + (commas.empty() ? std::to_string((begin + 1 == end) ? 1 : 0) : std::to_string(commas.size() + 1))};
+				return parsed_expression{*begin, {rec_parse(begin + 2, commas[0]), parse_shapelist(commas[0] + 1, end - 1)}};
+			}
+			if (commas.empty()) subexpressions.push_back(rec_parse(begin + 2, end - 1)); //TODO: what will happen when dealing with foo()?
 			else {
 				subexpressions.push_back(rec_parse(begin + 2, commas[0]));
 				for (size_t i = 0; i < commas.size() - 1; ++i)
